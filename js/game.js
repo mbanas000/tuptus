@@ -4,8 +4,8 @@
 G.start = () => {
   const canvas = document.getElementById('game');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-  // Telefony mają gęste ekrany, ale słabsze karty graficzne: zaczynamy od nieco niższej rozdzielczości.
-  const dpr = Math.min(window.devicePixelRatio || 1, G.input.touchMode ? 1.25 : 1.5);
+  // Ostateczną rozdzielczość i resztę ustawień ustala wybrany poziom grafiki (applyGfx niżej).
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   renderer.setPixelRatio(dpr);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
@@ -67,6 +67,35 @@ G.start = () => {
   G.water.buildShore();
   G.ambient.init(scene);
   G.daytime.init({ scene, renderer, bloom });
+
+  // ---------- Jakość grafiki ----------
+  // Trzy stałe poziomy. Gra nie zmienia ich sama w trakcie: przy pierwszym uruchomieniu krótki test
+  // (za ekranem ładowania) wybiera poziom, na którym dane urządzenie gra płynnie, a w menu można go zmienić.
+  const GFX = {
+    low: { name: 'Niska', pr: 1, msaa: 0, bloom: false, water: 2, shadow: 1024 },
+    medium: { name: 'Średnia', pr: 1, msaa: 4, bloom: true, water: 1, shadow: 2048 },
+    high: { name: 'Wysoka', pr: 1.5, msaa: 4, bloom: true, water: 0, shadow: 2048 },
+  };
+  const gfx = { level: 'medium', rec: null };
+  try {
+    const s = JSON.parse(localStorage.getItem('tuptus-gfx') || 'null');
+    if (s && GFX[s.level]) { gfx.level = s.level; gfx.rec = GFX[s.rec] ? s.rec : null; }
+  } catch (e) { /* bez zapisu */ }
+  const saveGfx = () => { try { localStorage.setItem('tuptus-gfx', JSON.stringify(gfx)); } catch (e) { /* bez zapisu */ } };
+  function applyGfx(id) {
+    const q = GFX[id];
+    gfx.level = id;
+    const pr = Math.min(window.devicePixelRatio || 1, q.pr);
+    renderer.setPixelRatio(pr);
+    composer.setPixelRatio(pr);
+    bloom.enabled = q.bloom;
+    for (const t of [composer.renderTarget1, composer.renderTarget2]) if (t.samples !== q.msaa) { t.samples = q.msaa; t.dispose(); }
+    G.water.setQuality(q.water); // po zmianie rozdzielczości, bo od niej zależy rozmiar odbicia
+    const sh = G.world.sun.shadow;
+    if (sh.mapSize.x !== q.shadow) { sh.mapSize.set(q.shadow, q.shadow); if (sh.map) { sh.map.dispose(); sh.map = null; } }
+  }
+  applyGfx(gfx.level);
+
   const player = new G.Player(scene);
   G.player = player;
   const sp = G.level.spawn;
@@ -195,7 +224,20 @@ G.start = () => {
     G.sfx.play('click');
     G.ui.syncDay();
   });
-  document.querySelectorAll('.day-tile').forEach((b) => b.addEventListener('click', () => {
+  // ---------- Jakość grafiki: panel w menu i w pauzie ----------
+  const syncGfx = () => G.ui.syncGfx(gfx.level, gfx.rec, GFX[gfx.rec || 'medium'].name);
+  const openGfx = () => { G.sfx.init(); G.sfx.play('click'); syncGfx(); G.ui.gfxPanel(true); };
+  document.getElementById('btn-gfx-menu').addEventListener('click', openGfx);
+  document.getElementById('btn-gfx-pause').addEventListener('click', openGfx);
+  document.getElementById('btn-gfx-close').addEventListener('click', () => { G.sfx.play('click'); G.ui.gfxPanel(false); });
+  document.querySelectorAll('.gfx-tile').forEach((b) => b.addEventListener('click', () => {
+    applyGfx(b.dataset.id);
+    saveGfx();
+    perf.acc = 0; perf.n = 0; perf.told = false;
+    G.sfx.play('pop');
+    syncGfx();
+  }));
+  document.querySelectorAll('.day-tile:not(.gfx-tile)').forEach((b) => b.addEventListener('click', () => {
     const p = G.daytime.PRESETS.find((x) => x.id === b.dataset.id);
     G.daytime.setTime(p.t);
     G.sfx.play('pop');
@@ -204,12 +246,13 @@ G.start = () => {
 
   window.addEventListener('keydown', (e) => {
     if (G.ui.isDayOpen() && (e.code === 'Escape' || e.code === 'Enter')) { G.ui.dayPanel(false); return; }
+    if (G.ui.isGfxOpen() && (e.code === 'Escape' || e.code === 'Enter')) { G.ui.gfxPanel(false); return; }
     if (S.state === 'intro' && ['Space', 'Enter', 'Escape'].includes(e.code)) { endIntro(); G.input.clear(); return; }
     if (e.code === 'Escape') {
       if (G.ui.isHelpOpen()) { G.ui.help(false); return; }
       if (S.state === 'play') pause(true); else if (S.state === 'paused') pause(false);
     }
-    if ((e.code === 'Enter' || e.code === 'Space') && S.state === 'menu' && !G.ui.isHelpOpen() && !G.ui.isDayOpen()) startIntro();
+    if ((e.code === 'Enter' || e.code === 'Space') && S.state === 'menu' && !G.ui.isHelpOpen() && !G.ui.isDayOpen() && !G.ui.isGfxOpen()) startIntro();
     // T: następna pora dnia.
     if (e.code === 'KeyT' && !e.repeat && S.state !== 'intro') {
       const p = G.daytime.next();
@@ -293,35 +336,51 @@ G.start = () => {
 
   // ---------- Pętla ----------
   let last = performance.now();
-  // Jeśli komputer nie nadąża, stopniowo obniżamy jakość: najpierw rozdzielczość,
-  // potem poświatę (bloom) i wygładzanie krawędzi.
-  const perf = { acc: 0, n: 0, level: 0 };
-  function lowerQuality() {
-    perf.level++;
-    if (perf.level === 1 && renderer.getPixelRatio() > 1) {
-      renderer.setPixelRatio(1);
-      composer.setPixelRatio(1);
-      G.water.setQuality(1);
-    } else {
-      perf.level = 2;
-      bloom.enabled = false;
-      for (const t of [composer.renderTarget1, composer.renderTarget2]) { t.samples = 0; t.dispose(); }
-      G.water.setQuality(2);
-    }
-  }
+  // Gdy gra wyraźnie zwalnia, nie zmieniamy grafiki sami – raz podpowiadamy, gdzie ją obniżyć.
+  const perf = { acc: 0, n: 0, told: false };
   function frame(now) {
     requestAnimationFrame(frame);
     const raw = (now - last) / 1000;
     const dt = Math.max(0, Math.min(0.05, raw));
     last = now;
-    if (perf.level < 2 && raw > 0 && raw < 0.5 && !document.hidden) {
+    if (!perf.told && S.state === 'play' && gfx.level !== 'low' && raw > 0 && raw < 0.5 && !document.hidden) {
       perf.acc += raw; perf.n++;
-      if (perf.n >= 180) {
-        if (perf.acc / perf.n > 1 / 42) lowerQuality();
+      if (perf.n >= 300) {
+        if (perf.acc / perf.n > 1 / 36) {
+          perf.told = true;
+          G.ui.toast('Gra trochę zwalnia. W pauzie możesz wybrać niższą jakość grafiki', 4500);
+        }
         perf.acc = 0; perf.n = 0;
       }
     }
     tick(dt);
+  }
+
+  // Pierwsze uruchomienie: kilka klatek z widoku gry na każdym poziomie (od najwyższego) i wybór
+  // najwyższego, który mieści się w budżecie czasu. Odczyt piksela czeka, aż karta graficzna skończy.
+  function benchmark() {
+    const gl = renderer.getContext(), px = new Uint8Array(4);
+    const BUDGET = 12; // ms na sam obraz, żeby z logiką gry zmieścić się w ~60 klatkach na sekundę
+    const time = () => {
+      const t0 = performance.now();
+      composer.render();
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      return performance.now() - t0;
+    };
+    S.blend = 1;
+    tick(1 / 60); // kamera w pozycji z gry, shadery skompilowane
+    let pick = 'low';
+    const result = {};
+    for (const id of ['high', 'medium', 'low']) {
+      applyGfx(id);
+      time(); time(); // rozgrzewka po zmianie ustawień
+      const ts = [time(), time(), time(), time(), time()].sort((a, b) => a - b);
+      result[id] = ts[2];
+      if (ts[2] <= BUDGET) { pick = id; break; }
+    }
+    S.blend = 0;
+    G._bench = result;
+    return pick;
   }
   // Ręczny krok symulacji (przydatny do testów, gdy karta jest w tle).
   G._tick = (dt = 1 / 60, n = 1) => { for (let i = 0; i < n; i++) tick(dt); };
@@ -409,11 +468,17 @@ G.start = () => {
   let skip = false;
   try { skip = sessionStorage.getItem('tuptus-skip-menu') === '1'; sessionStorage.removeItem('tuptus-skip-menu'); } catch (e) { /* brak dostępu */ }
   player.frozen = true;
+  if (!gfx.rec) {
+    try { gfx.rec = benchmark(); } catch (e) { console.error(e); gfx.rec = 'medium'; }
+    applyGfx(gfx.rec);
+    saveGfx();
+  }
   if (skip) { S.blend = 1; play(); } else G.ui.menu(true);
   G.ui.loaded();
   G._state = S;
   G._play = play;
   G._intro = startIntro;
-  G._lower = lowerQuality;
+  G._gfx = applyGfx;
+  G._benchmark = benchmark;
   requestAnimationFrame(frame);
 };

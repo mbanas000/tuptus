@@ -49,6 +49,7 @@ body.touch .kbd-only { display: none !important; }
 #hud {
   position: fixed;
   inset: 0;
+  z-index: 4; /* nad warstwą dotykową (z-index 3), żeby przycisk pauzy dało się stuknąć */
   pointer-events: none;
   padding: 18px 22px;
 }
@@ -249,7 +250,7 @@ body.touch .kbd-only { display: none !important; }
   box-shadow: 0 10px 30px rgba(70, 50, 40, 0.16);
 }
 
-.buttons { display: flex; gap: 14px; margin-top: 22px; margin-left: 6px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 22px; margin-left: 6px; }
 .buttons.col { flex-direction: column; margin-left: 0; }
 
 .btn {
@@ -283,9 +284,9 @@ body.touch .kbd-only { display: none !important; }
 }
 .panel.small { min-width: 320px; text-align: center; }
 .panel h2 { margin: 0 0 18px; font-size: 38px; font-weight: 700; color: var(--ink); }
-#help, #pause, #results, #daypanel { background: rgba(70, 50, 60, 0.28); backdrop-filter: blur(3px); z-index: 10; }
+#help, #pause, #results, #daypanel, #gfxpanel { background: rgba(70, 50, 60, 0.28); backdrop-filter: blur(3px); z-index: 10; }
 /* Panele otwierane z pauzy lub menu leżą nad nimi. */
-#help, #daypanel { z-index: 12; }
+#help, #daypanel, #gfxpanel { z-index: 12; }
 
 /* ---------- Panel pory dnia ---------- */
 .panel.day { min-width: 0; width: min(500px, calc(100vw - 32px)); text-align: center; }
@@ -318,6 +319,24 @@ body.touch .kbd-only { display: none !important; }
 .sky.night { background: radial-gradient(circle at 30% 25%, #fff 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #fff 0 1px, transparent 2px), radial-gradient(circle at 45% 75%, #fff 0 1px, transparent 2px), linear-gradient(#0a1230, #172250 60%, #2f3b6c); }
 .sky.night::after { width: 16px; height: 16px; left: 36px; top: 12px; background: #eef2ff; box-shadow: 0 0 10px #c8d6ff; }
 .day-now { font-size: 17px; color: var(--ink-soft); margin: 0 0 16px; }
+
+/* ---------- Panel jakości grafiki ---------- */
+.gfx-tile { position: relative; padding: 12px 8px 10px; }
+.gfx-tile small { font-size: 12px; font-weight: 500; color: var(--ink-soft); line-height: 1.25; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 40px; margin-bottom: 2px; }
+.bars i { display: block; width: 11px; border-radius: 4px; background: #e3d8c8; }
+.bars i:nth-child(1) { height: 16px; }
+.bars i:nth-child(2) { height: 27px; }
+.bars i:nth-child(3) { height: 38px; }
+.bars.l1 i:nth-child(-n+1), .bars.l2 i:nth-child(-n+2), .bars.l3 i { background: var(--slate); }
+.gfx-tile.on .bars.l1 i:nth-child(-n+1), .gfx-tile.on .bars.l2 i:nth-child(-n+2), .gfx-tile.on .bars.l3 i { background: var(--leaf); }
+.gfx-tile .rec {
+  display: none; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  padding: 1px 9px; border-radius: 999px; background: #ffd27a; color: #7a4a10;
+  font-size: 11px; font-style: normal; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 0 #e0a83c;
+}
+.gfx-tile.is-rec .rec { display: block; }
+.gfx .day-tiles { margin-top: 14px; }
 .day-now .k { font-size: 14px; padding: 0 8px; min-width: 0; }
 
 .keys { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }

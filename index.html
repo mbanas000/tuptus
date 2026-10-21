@@ -89,6 +89,7 @@
       <button class="btn primary" id="btn-play">Graj</button>
       <button class="btn" id="btn-help">Jak grać?</button>
       <button class="btn" id="btn-day-menu">Pora dnia</button>
+      <button class="btn" id="btn-gfx-menu">Grafika</button>
     </div>
   </div>
 </div>
@@ -130,6 +131,7 @@
       <button class="btn primary" id="btn-resume">Wróć do gry</button>
       <button class="btn" id="btn-pause-help">Jak grać?</button>
       <button class="btn" id="btn-day-pause">Pora dnia</button>
+      <button class="btn" id="btn-gfx-pause">Grafika</button>
       <button class="btn" id="btn-restart">Zacznij od nowa</button>
     </div>
   </div>
@@ -150,6 +152,20 @@
     </div>
     <p class="day-now">Teraz: <b id="day-now">Zachód</b><span class="kbd-only"> · w grze <span class="k">T</span> przełącza dalej</span></p>
     <button class="btn primary" id="btn-day-close">Gotowe</button>
+  </div>
+</div>
+
+<!-- Jakość grafiki -->
+<div id="gfxpanel" class="overlay hidden">
+  <div class="panel day gfx">
+    <h2>Jakość grafiki</h2>
+    <div class="day-tiles">
+      <button class="day-tile gfx-tile" data-id="low"><span class="bars l1"><i></i><i></i><i></i></span><span>Niska</span><small>Bez odbić i poświaty. Najpłynniej.</small><em class="rec">polecana</em></button>
+      <button class="day-tile gfx-tile" data-id="medium"><span class="bars l2"><i></i><i></i><i></i></span><span>Średnia</span><small>Odbicia w wodzie i poświata.</small><em class="rec">polecana</em></button>
+      <button class="day-tile gfx-tile" data-id="high"><span class="bars l3"><i></i><i></i><i></i></span><span>Wysoka</span><small>Ostrzejszy obraz i dokładne odbicia.</small><em class="rec">polecana</em></button>
+    </div>
+    <p class="day-now">Gra sprawdziła to urządzenie i poleca: <b id="gfx-rec">Średnia</b></p>
+    <button class="btn primary" id="btn-gfx-close">Gotowe</button>
   </div>
 </div>
 

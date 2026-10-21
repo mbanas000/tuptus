@@ -50,7 +50,17 @@ G.ui = (() => {
       $('day-cycle').setAttribute('aria-checked', D.cycle ? 'true' : 'false');
       $('day-now').textContent = D.name;
       const active = D.PRESETS.find((p) => p.name === D.name);
-      document.querySelectorAll('.day-tile').forEach((b) => b.classList.toggle('on', !!active && b.dataset.id === active.id));
+      document.querySelectorAll('.day-tile:not(.gfx-tile)').forEach((b) => b.classList.toggle('on', !!active && b.dataset.id === active.id));
+    },
+    // Panel jakości grafiki: zaznaczony wybrany poziom i plakietka przy poleconym.
+    gfxPanel(on) { show('gfxpanel', on); },
+    isGfxOpen() { return !$('gfxpanel').classList.contains('hidden'); },
+    syncGfx(level, rec, recName) {
+      document.querySelectorAll('.gfx-tile').forEach((b) => {
+        b.classList.toggle('on', b.dataset.id === level);
+        b.classList.toggle('is-rec', b.dataset.id === rec);
+      });
+      $('gfx-rec').textContent = recName;
     },
     setGolds(n, total, doBump) {
       $('golds-count').textContent = `${n}/${total}`;
