@@ -28,18 +28,20 @@ G.ui = (() => {
         h.appendChild(s);
       }
     },
+    // Koniec ładowania: tło znika, a scena pod matowym szkłem wyostrza się (animacja w CSS: #loading.reveal).
     loaded() {
       const l = $('loading');
-      l.classList.add('fade');
-      setTimeout(() => l.classList.add('hidden'), 700);
+      l.classList.add('reveal');
+      setTimeout(() => l.classList.add('hidden'), 1700);
     },
     hud(on) { show('hud', on); },
     menu(on) { show('menu', on); },
     help(on) { show('help', on); },
     pause(on) { show('pause', on); if (!on) show('help', false); },
     isHelpOpen() { return !$('help').classList.contains('hidden'); },
+    // Licznik: duża liczba zebranych i mniejsze „/razem”.
     setStars(n, total, doBump) {
-      $('stars-count').textContent = `${n}/${total}`;
+      $('stars-count').innerHTML = `<b>${n}</b><small>/${total}</small>`;
       if (doBump) bump($('hud-stars'));
     },
     // Panel pory dnia: przełącznik cyklu, kafelki pór i napis „Teraz”.
@@ -63,7 +65,7 @@ G.ui = (() => {
       $('gfx-rec').textContent = recName;
     },
     setGolds(n, total, doBump) {
-      $('golds-count').textContent = `${n}/${total}`;
+      $('golds-count').innerHTML = `<b>${n}</b><small>/${total}</small>`;
       if (doBump) bump($('hud-golds'));
     },
     intro(on) {

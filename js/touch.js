@@ -18,7 +18,12 @@ G.touch = (() => {
   let on = false;
 
   const playing = () => body.dataset.state === 'play';
-  const buzz = () => { try { navigator.vibrate && navigator.vibrate(8); } catch (e) { /* bez wibracji */ } };
+  // Wibracja działa dopiero po pierwszym prawdziwym stuknięciu (inaczej przeglądarka zgłasza błąd).
+  const buzz = () => {
+    try {
+      if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(8);
+    } catch (e) { /* bez wibracji */ }
+  };
 
   function setMode(t) {
     if (t === on) return;
@@ -152,8 +157,110 @@ G.touch = (() => {
   // Ekran pionowy: prośba o obrócenie telefonu (można zostać w pionie).
   $('btn-rotate-skip').addEventListener('click', () => { G.sfx.init(); G.sfx.play('click'); $('rotate').classList.add('dismissed'); });
 
+  // ---------- Bez powiększania strony (iPhone) ----------
+  // Safari na iPhonie ignoruje zakaz powiększania w <meta viewport> i nie obsługuje „touch-action: none”,
+  // więc szybkie podwójne stuknięcie w przycisk powiększało ekran. Blokujemy te gesty sami.
+  const stop = (e) => { if (e.cancelable) e.preventDefault(); };
+  for (const type of ['touchstart', 'touchmove', 'touchend']) layer.addEventListener(type, stop, { passive: false });
+  for (const type of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(type, stop, { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    // Drugie stuknięcie tuż po pierwszym to dla Safari „podwójne stuknięcie = powiększ”.
+    if (e.timeStamp - lastTouchEnd < 350 && e.cancelable) e.preventDefault();
+    lastTouchEnd = e.timeStamp;
+  }, { passive: false });
+  // Gdyby strona i tak się powiększyła, wracamy do skali 1 (zmiana <meta viewport> wymusza przeliczenie).
+  const vpMeta = document.querySelector('meta[name="viewport"]');
+  if (window.visualViewport && vpMeta) {
+    const base = vpMeta.content;
+    window.visualViewport.addEventListener('resize', () => {
+      if (window.visualViewport.scale > 1.01) {
+        vpMeta.content = `${base}, minimum-scale=1`;
+        setTimeout(() => { vpMeta.content = base; }, 60);
+      }
+    });
+  }
+
+  // ---------- Podpowiedź gestu: kciuk przesuwa się z Kulki na Skok ----------
+  // Półprzezroczysta strzałka łukiem od Kulki do Skoku i „duch kciuka”, który ją pokonuje:
+  // tak robi się wysoki skok (w miejscu) i daleki skok (w biegu).
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const sh = { on: false, t: 0, svg: null, track: null, head: null, trail: null, ghost: null, a: null, b: null, c: null };
+  const bez = (t, out = {}) => {
+    const u = 1 - t;
+    out.x = u * u * sh.a.x + 2 * u * t * sh.c.x + t * t * sh.b.x;
+    out.y = u * u * sh.a.y + 2 * u * t * sh.c.y + t * t * sh.b.y;
+    return out;
+  };
+  const line = (t0, t1, n = 24) => {
+    let d = '';
+    for (let i = 0; i <= n; i++) { const p = bez(t0 + (t1 - t0) * (i / n)); d += `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`; }
+    return d;
+  };
+  function layoutHint() {
+    const ra = $('tb-act').getBoundingClientRect(), rb = $('tb-jump').getBoundingClientRect();
+    sh.a = { x: ra.left + ra.width / 2, y: ra.top + ra.height / 2 };
+    sh.b = { x: rb.left + rb.width / 2, y: rb.top + rb.height / 2 };
+    sh.c = { x: (sh.a.x + sh.b.x) / 2, y: Math.min(sh.a.y, sh.b.y) - 66 };
+    // Strzałka zaczyna się i kończy przy krawędziach przycisków, nie w ich środkach.
+    const T0 = 0.24, T1 = 0.8;
+    sh.track.setAttribute('d', line(T0, T1));
+    const e = bez(T1), p = bez(T1 - 0.02);
+    const ang = Math.atan2(e.y - p.y, e.x - p.x), L = 17, W = 0.6;
+    sh.head.setAttribute('d', `M${e.x + Math.cos(ang) * 4} ${e.y + Math.sin(ang) * 4}` +
+      `L${e.x - Math.cos(ang - W) * L} ${e.y - Math.sin(ang - W) * L}` +
+      `L${e.x - Math.cos(ang + W) * L} ${e.y - Math.sin(ang + W) * L}Z`);
+  }
+  function buildHint() {
+    sh.svg = document.createElementNS(SVGNS, 'svg');
+    sh.svg.setAttribute('class', 'slide-hint');
+    sh.svg.innerHTML = '<path class="sh-track"/><path class="sh-trail"/><path class="sh-head"/><circle class="sh-ghost" r="21"/>';
+    [sh.track, sh.trail, sh.head, sh.ghost] = sh.svg.children;
+    layer.appendChild(sh.svg);
+    window.addEventListener('resize', () => { if (sh.on) layoutHint(); });
+  }
+  function slideHint(show) {
+    if (show && !on) return;
+    if (show === sh.on) return;
+    sh.on = show;
+    if (show) {
+      if (!sh.svg) buildHint();
+      layoutHint();
+      sh.t = 0;
+      sh.svg.classList.add('show');
+    } else if (sh.svg) {
+      sh.svg.classList.remove('show');
+      for (const b of BTNS) b.el.classList.remove('hint');
+    }
+  }
+  function updateHint(dt) {
+    if (!sh.on) return;
+    const T = 2.0;
+    sh.t = (sh.t + dt) % T;
+    const u = sh.t / T;
+    // 0–0.15: kciuk „siada” na Kulce, 0.15–0.62: jedzie łukiem, 0.62–0.85: wciska Skok, potem znika.
+    let k = 0, op = 1;
+    if (u < 0.15) op = u / 0.15;
+    else if (u < 0.62) { const s = (u - 0.15) / 0.47; k = s * s * (3 - 2 * s); }
+    else { k = 1; if (u > 0.85) op = 1 - (u - 0.85) / 0.15; }
+    const p = bez(k);
+    const press = u > 0.62 && u < 0.85;
+    sh.ghost.setAttribute('cx', p.x.toFixed(1));
+    sh.ghost.setAttribute('cy', p.y.toFixed(1));
+    sh.ghost.setAttribute('r', (press ? 17 : 21).toString());
+    sh.ghost.style.opacity = op.toFixed(2);
+    sh.trail.setAttribute('d', k > 0.01 ? line(0, k, 16) : '');
+    sh.trail.style.opacity = (op * 0.9).toFixed(2);
+    BTNS[1].el.classList.toggle('hint', u < 0.62);
+    BTNS[0].el.classList.toggle('hint', press);
+  }
+  // Gracz zrobił wysoki albo daleki skok: już wie, jak to działa.
+  G.on('special', () => slideHint(false));
+
   return {
     get on() { return on; },
+    slideHint,
+    update: updateHint,
     // Wołane przy zmianie stanu gry: poza rozgrywką żaden palec niczego nie trzyma.
     reset: releaseAll,
     // Na telefonie gra startuje na pełnym ekranie i w poziomie (tam, gdzie przeglądarka na to pozwala).

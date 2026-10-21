@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/loading.css">
 <script type="importmap">
 {
   "imports": {
@@ -38,30 +39,35 @@
   </div>
 </div>
 
-<!-- HUD -->
+<!-- HUD: szklana belka z licznikami (lewy róg) i szklana belka z serduszkami i czasem (prawy róg) -->
 <div id="hud" class="hidden">
-  <div class="hud-left">
-    <div class="pill" id="hud-stars">
+  <div class="hud-left glass" id="hud-counters">
+    <div class="seg" id="hud-stars">
       <svg viewBox="0 0 24 24" class="ico star"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>
-      <span id="stars-count">0/0</span>
+      <span class="count" id="stars-count">0/0</span>
     </div>
-    <div class="pill friends" id="hud-friends"></div>
-    <div class="pill" id="hud-golds">
+    <span class="hud-div"></span>
+    <div class="seg friends" id="hud-friends"></div>
+    <span class="hud-div"></span>
+    <div class="seg" id="hud-golds">
       <svg viewBox="0 0 24 24" class="ico gold"><path class="body" d="M14.6 6.2c1.9 1.4 2.2 3.6 1 5.2L7.4 21.6c-.7.8-2 .1-1.6-.9l4.7-12.4c.9-2.2 3.2-3.3 4.1-2.1z"/><path class="leaf" d="M15.4 6.1c.2-1.8 1.1-3.3 2.6-4.1.3 1.6-.3 3.1-1.5 4.3 1.4-.6 3-.6 4.3.2-1.2 1.1-2.9 1.4-4.5.9z"/></svg>
-      <span id="golds-count">0/0</span>
+      <span class="count" id="golds-count">0/0</span>
     </div>
   </div>
   <div class="hud-right">
-    <div id="hearts"></div>
-    <div class="pill timer" id="timer">0:00</div>
-    <button class="pill pause-btn touch-only" id="btn-pause-touch" aria-label="Pauza"><svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.6"/><rect x="13.5" y="5" width="4" height="14" rx="1.6"/></svg></button>
+    <div class="glass vitals">
+      <div id="hearts"></div>
+      <span class="hud-div"></span>
+      <div class="timer"><svg viewBox="0 0 24 24" class="clock"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span id="timer">0:00</span></div>
+    </div>
+    <button class="glass pause-btn touch-only" id="btn-pause-touch" aria-label="Pauza"><svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.6"/><rect x="13.5" y="5" width="4" height="14" rx="1.6"/></svg></button>
   </div>
-  <div id="hint"></div>
-  <div id="toast"></div>
+  <div id="hint" class="glass"></div>
+  <div id="toast" class="glass"></div>
 </div>
 
 <!-- Karta z podpowiedzią ruchu (mała scena 3D) -->
-<div id="tipcard" class="hidden">
+<div id="tipcard" class="glass hidden">
   <div class="tip-view"><canvas id="tip-canvas" width="236" height="150"></canvas></div>
   <div class="tip-text">
     <p class="tip-label">Nowy ruch</p>
@@ -200,79 +206,130 @@
   </div>
 </div>
 
-<!-- Ładowanie: Tuptuś skacze po wysepce i zbiera gwiazdki – każda to kawałek wczytanej gry -->
+<!-- Ładowanie: unosząca się wysepka-diorama buduje się w rytm wczytywania gry: trawa, drzewo, staw,
+     kwiatki, Tuptuś i na końcu gwiazdka. Wszystkie ruchy to animacje CSS na osobnych warstwach,
+     więc płyną nawet wtedy, gdy gra w tle buduje świat. Elementy z data-th pojawiają się po przekroczeniu progu. -->
 <div id="loading" class="overlay">
-  <div class="ld-sun"></div>
-  <div class="ld-cloud" style="--s:1; top:13%; animation-duration:70s; animation-delay:-12s"></div>
-  <div class="ld-cloud" style="--s:0.7; top:27%; animation-duration:95s; animation-delay:-55s"></div>
-  <div class="ld-cloud" style="--s:0.55; top:7%; animation-duration:120s; animation-delay:-90s"></div>
-  <svg class="ld-hills" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M0 150C200 60 380 70 560 130C720 180 880 70 1200 110V300H0Z" fill="#b4dc97"/>
-    <path d="M0 220C220 150 420 170 640 210C820 240 1000 160 1200 190V300H0Z" fill="#8fcd72"/>
-  </svg>
-  <div class="loader">
-    <h1 class="ld-title">Tuptuś</h1>
-    <p class="ld-sub">i zagubieni przyjaciele</p>
-    <div class="ld-track" id="ld-track">
-      <div class="ld-island"></div>
-      <div class="ld-runner" id="ld-runner">
-        <div class="ld-shadow"></div>
-        <div class="ld-bunny">
-          <svg viewBox="0 -8 120 108" aria-hidden="true">
-            <defs>
-              <radialGradient id="ldFur" cx="38%" cy="32%" r="72%"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#efd9bc"/></radialGradient>
-              <clipPath id="ldEarClip"><ellipse cx="80" cy="15" rx="7.5" ry="19" transform="rotate(-8 80 15)"/></clipPath>
-            </defs>
-            <g class="ld-ear back"><ellipse cx="66" cy="18" rx="6.5" ry="18" transform="rotate(-24 66 18)" fill="#dcb893"/></g>
-            <circle cx="21" cy="60" r="8.5" fill="#fffaf2"/>
-            <ellipse cx="36" cy="90" rx="14" ry="6" fill="#efd8bb"/>
-            <ellipse cx="50" cy="66" rx="30" ry="23" fill="url(#ldFur)"/>
-            <ellipse cx="72" cy="89" rx="7.5" ry="5.5" fill="#efd8bb"/>
-            <circle cx="80" cy="48" r="21" fill="url(#ldFur)"/>
-            <g class="ld-ear">
-              <ellipse cx="80" cy="15" rx="7.5" ry="19" transform="rotate(-8 80 15)" fill="url(#ldFur)"/>
-              <rect x="66" y="-8" width="28" height="10" fill="#c99a6e" clip-path="url(#ldEarClip)"/>
-              <ellipse cx="80.8" cy="17" rx="3.5" ry="12.5" transform="rotate(-8 80.8 17)" fill="#f5b3c1"/>
+  <div class="ld-bg"></div>
+  <div class="ld-cloud" style="--s:1; top:12%; animation-duration:80s; animation-delay:-14s"></div>
+  <div class="ld-cloud" style="--s:0.7; top:24%; animation-duration:110s; animation-delay:-60s"></div>
+  <div class="ld-cloud" style="--s:0.55; top:6%; animation-duration:140s; animation-delay:-100s"></div>
+  <div class="ld-motes" id="ld-motes"></div>
+  <div class="ld-center">
+    <div class="ld-dio-box">
+      <div class="ld-dio" id="ld-dio">
+        <div class="dio-shadow"></div>
+        <div class="dio-rise"><div class="dio-bob">
+          <svg class="dio-island" viewBox="0 0 500 430" aria-hidden="true">
+            <g stroke-linejoin="round" stroke-width="18">
+              <polygon points="50 200 250 300 250 374 50 274" fill="#c98a5b" stroke="#c98a5b"/>
+              <polygon points="250 300 450 200 450 274 250 374" fill="#a86c44" stroke="#a86c44"/>
             </g>
-            <ellipse cx="95" cy="56" rx="8.5" ry="7" fill="#fffaf3"/>
-            <ellipse cx="87" cy="58.5" rx="4.2" ry="2.6" fill="#f7a9b8" opacity="0.75"/>
-            <ellipse cx="88" cy="44" rx="5" ry="6" fill="#3b2a24"/>
-            <ellipse cx="88.4" cy="44.8" rx="3.7" ry="4.6" fill="#a8682f"/>
-            <circle cx="88.8" cy="45.4" r="2.2" fill="#2b1d18"/>
-            <circle cx="86.9" cy="42.6" r="1.5" fill="#fff"/>
-            <ellipse cx="101.5" cy="52" rx="2.8" ry="2.2" fill="#f08aa2"/>
-            <path d="M100.5 55.5q-1 3.2-4.2 2.6" fill="none" stroke="#7a5446" stroke-width="1.3" stroke-linecap="round"/>
+            <g fill="rgba(80,45,20,0.25)">
+              <ellipse cx="130" cy="290" rx="12.6" ry="9"/><ellipse cx="190" cy="320" rx="8.4" ry="6"/>
+              <ellipse cx="320" cy="310" rx="11.2" ry="8"/><ellipse cx="390" cy="280" rx="7" ry="5"/>
+            </g>
+            <g stroke-linejoin="round" stroke-width="18">
+              <polygon points="50 200 250 300 250 314 50 214" fill="#5fae45" stroke="#5fae45"/>
+              <polygon points="250 300 450 200 450 214 250 314" fill="#4f9d38" stroke="#4f9d38"/>
+              <polygon points="250 100 450 200 250 300 50 200" fill="#8fd46a" stroke="#8fd46a"/>
+            </g>
+            <polygon points="250 100 450 200 350 210 150 190" fill="rgba(255,255,255,0.12)"/>
           </svg>
-        </div>
+          <!-- drzewo -->
+          <div class="dio-item" data-th="0.3" style="left:208px;top:46px;width:104px;height:110px"><div class="pop" style="transform-origin:52px 104px"><div class="sway" style="transform-origin:52px 104px">
+            <svg viewBox="-52 -104 104 110"><ellipse cx="0" cy="2" rx="26" ry="10" fill="rgba(30,60,20,0.25)"/><rect x="-7" y="-46" width="14" height="46" rx="5" fill="#a8693e"/>
+              <circle cx="-18" cy="-56" r="21" fill="#6cbd4f"/><circle cx="18" cy="-54" r="22" fill="#4f9d38"/><circle cx="0" cy="-70" r="29" fill="#5fae45"/><circle cx="-9" cy="-80" r="10" fill="#8fd46a" opacity="0.7"/></svg>
+          </div></div></div>
+          <!-- różowy kwiatek -->
+          <div class="dio-item" data-th="0.62" style="left:163px;top:143.5px;width:24px;height:38px"><div class="pop" style="transform-origin:12px 34px"><div class="sway s2" style="transform-origin:12px 34px">
+            <svg viewBox="-12 -34 24 38"><ellipse cx="0" cy="2" rx="8" ry="3" fill="rgba(30,60,20,0.25)"/><path d="M0 0V-18" stroke="#4f9d38" stroke-width="2.5"/>
+              <g fill="#f7a9c4"><circle cx="6" cy="-24" r="4.6"/><circle cx="1.9" cy="-18.3" r="4.6"/><circle cx="-4.9" cy="-20.5" r="4.6"/><circle cx="-4.9" cy="-27.5" r="4.6"/><circle cx="1.9" cy="-29.7" r="4.6"/></g><circle cx="0" cy="-24" r="3.4" fill="#ffd36b"/></svg>
+          </div></div></div>
+          <!-- kępka trawy -->
+          <div class="dio-item" data-th="0.16" style="left:106px;top:172px;width:28px;height:22px"><div class="pop" style="transform-origin:14px 18px">
+            <svg viewBox="-14 -18 28 22"><ellipse cx="0" cy="2" rx="10" ry="3.8" fill="rgba(30,60,20,0.25)"/><path d="M-9 0L-6 -12L-3 0ZM-3 0L1 -16L5 0ZM4 0L8 -11L11 0Z" fill="#5fae45"/></svg>
+          </div></div>
+          <div class="dio-item" data-th="0.12" style="left:386px;top:177px;width:28px;height:22px"><div class="pop" style="transform-origin:14px 18px">
+            <svg viewBox="-14 -18 28 22"><ellipse cx="0" cy="2" rx="10" ry="3.8" fill="rgba(30,60,20,0.25)"/><path d="M-9 0L-6 -12L-3 0ZM-3 0L1 -16L5 0ZM4 0L8 -11L11 0Z" fill="#5fae45"/></svg>
+          </div></div>
+          <!-- Tuptuś: cień stoi w miejscu, a królik podskakuje -->
+          <div class="dio-item dio-bunny" data-th="0.78" style="left:202px;top:122px;width:64px;height:82px"><div class="pop" style="transform-origin:28px 78px">
+            <svg viewBox="-28 -78 64 82"><ellipse cx="2" cy="2" rx="17" ry="5.5" fill="rgba(30,60,20,0.25)"/></svg>
+            <div class="hop" style="transform-origin:28px 78px"><svg viewBox="-28 -78 64 82"><g transform="scale(1.15)">
+              <circle cx="-14" cy="-22" r="5.5" fill="#fffaf2"/><ellipse cx="0" cy="-18" rx="18" ry="15" fill="#fdf0dc"/><ellipse cx="8" cy="-3" rx="9" ry="4" fill="#efd9bc"/>
+              <ellipse cx="9" cy="-50" rx="4.2" ry="13" fill="#e6c9a4" transform="rotate(-16 9 -50)"/><circle cx="15" cy="-32" r="11.5" fill="#fdf0dc"/>
+              <ellipse cx="17" cy="-52" rx="4.5" ry="13" fill="#fdf0dc" transform="rotate(6 17 -52)"/><ellipse cx="17.4" cy="-51" rx="2" ry="9" fill="#f5b3c1" transform="rotate(6 17.4 -51)"/>
+              <circle cx="19.5" cy="-33" r="2.3" fill="#3b2a24"/><circle cx="18.8" cy="-33.8" r="0.8" fill="#fff"/><circle cx="26.2" cy="-30" r="1.7" fill="#f08aa2"/>
+              <ellipse cx="20" cy="-27" rx="3" ry="1.8" fill="#f7a9b8" opacity="0.7"/></g></svg></div>
+          </div></div>
+          <!-- staw -->
+          <div class="dio-item" data-th="0.45" style="left:265px;top:189.5px;width:100px;height:34px"><div class="pop" style="transform-origin:50px 28px">
+            <svg viewBox="-50 -28 100 34"><ellipse cx="0" cy="-2" rx="46" ry="22" fill="#3f8fd6"/><ellipse cx="0" cy="-3" rx="40" ry="18" fill="#5fb4ee"/>
+              <ellipse class="glint" cx="-12" cy="-7" rx="12" ry="3" fill="#fff"/><ellipse class="glint g2" cx="14" cy="2" rx="8" ry="2" fill="#fff"/></svg>
+          </div></div>
+          <!-- biały kwiatek -->
+          <div class="dio-item" data-th="0.58" style="left:208px;top:196px;width:24px;height:38px"><div class="pop" style="transform-origin:12px 34px"><div class="sway" style="transform-origin:12px 34px">
+            <svg viewBox="-12 -34 24 38"><ellipse cx="0" cy="2" rx="8" ry="3" fill="rgba(30,60,20,0.25)"/><path d="M0 0V-18" stroke="#4f9d38" stroke-width="2.5"/>
+              <g fill="#fff"><circle cx="6" cy="-24" r="4.6"/><circle cx="1.9" cy="-18.3" r="4.6"/><circle cx="-4.9" cy="-20.5" r="4.6"/><circle cx="-4.9" cy="-27.5" r="4.6"/><circle cx="1.9" cy="-29.7" r="4.6"/></g><circle cx="0" cy="-24" r="3.4" fill="#ffd36b"/></svg>
+          </div></div></div>
+          <div class="dio-item" data-th="0.2" style="left:156px;top:227px;width:28px;height:22px"><div class="pop" style="transform-origin:14px 18px">
+            <svg viewBox="-14 -18 28 22"><ellipse cx="0" cy="2" rx="10" ry="3.8" fill="rgba(30,60,20,0.25)"/><path d="M-9 0L-6 -12L-3 0ZM-3 0L1 -16L5 0ZM4 0L8 -11L11 0Z" fill="#5fae45"/></svg>
+          </div></div>
+          <!-- niebieski kwiatek -->
+          <div class="dio-item" data-th="0.66" style="left:278px;top:221px;width:24px;height:38px"><div class="pop" style="transform-origin:12px 34px"><div class="sway s3" style="transform-origin:12px 34px">
+            <svg viewBox="-12 -34 24 38"><ellipse cx="0" cy="2" rx="8" ry="3" fill="rgba(30,60,20,0.25)"/><path d="M0 0V-18" stroke="#4f9d38" stroke-width="2.5"/>
+              <g fill="#b8c8ff"><circle cx="6" cy="-24" r="4.6"/><circle cx="1.9" cy="-18.3" r="4.6"/><circle cx="-4.9" cy="-20.5" r="4.6"/><circle cx="-4.9" cy="-27.5" r="4.6"/><circle cx="1.9" cy="-29.7" r="4.6"/></g><circle cx="0" cy="-24" r="3.4" fill="#ffd36b"/></svg>
+          </div></div></div>
+          <!-- gwiazdka nad wyspą -->
+          <div class="dio-item dio-star" data-th="0.95" style="left:295px;top:-2.5px;width:60px;height:60px"><div class="pop" style="transform-origin:30px 30px"><div class="float"><div class="spin">
+            <svg viewBox="-30 -30 60 60"><circle r="26" fill="rgba(255,214,90,0.28)"/><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z" transform="translate(-18 -18) scale(1.5)" fill="#ffcf33" stroke="#e9a414" stroke-width="1.2" stroke-linejoin="round"/></svg>
+          </div></div></div></div>
+        </div></div>
       </div>
     </div>
-    <p id="loading-text">Budzę Tuptusia…</p>
-    <div class="ld-tip"><span>Wskazówka</span><p id="ld-tip"></p></div>
+    <div class="ld-meta"><span class="ld-name">Tuptuś</span><span class="ld-sep"></span><span class="ld-pct" id="ld-pct">0%</span></div>
+    <p id="loading-text"></p>
   </div>
+  <div class="ld-tipbox"><span>Wskazówka</span><p id="ld-tip"></p></div>
 </div>
+<script>
+  // Kolory ekranu ładowania od razu jak zapisana pora dnia (zachód, noc albo świt), bez mignięcia innym tłem.
+  (function () {
+    var tod = 'dusk';
+    try {
+      var s = JSON.parse(localStorage.getItem('tuptus-daytime') || 'null');
+      if (s && typeof s.t === 'number') { var t = ((s.t % 1) + 1) % 1; tod = t >= 0.79 || t < 0.14 ? 'night' : t < 0.46 ? 'dawn' : 'dusk'; }
+    } catch (e) { /* domyślnie zachód */ }
+    document.getElementById('loading').setAttribute('data-tod', tod);
+  })();
+</script>
 
 <script type="module">
   // ---------- Ekran ładowania ----------
-  // Tuptuś przesuwa się po wysepce zgodnie z postępem i zbiera po drodze gwiazdki.
-  // stage(p, next, tekst): postęp skacze do p i powoli „pełznie” w stronę next, dopóki trwa dany etap.
+  // Wysepka-diorama: elementy z data-th „wyskakują”, gdy postęp przekroczy ich próg; na 100% Tuptuś się cieszy.
+  // stage(p, next): postęp skacze do p i powoli „pełznie” w stronę next, dopóki trwa dany etap.
   const loader = (() => {
-    const track = document.getElementById('ld-track'), runner = document.getElementById('ld-runner');
-    const text = document.getElementById('loading-text'), tipEl = document.getElementById('ld-tip');
-    const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
-    const TUFT = '<svg viewBox="0 0 24 16"><path d="M2 16L6 3l3 13zM8 16l5-16 3 16zM15 16l5-11 2 11z" fill="#5fae45"/></svg>';
-    const FLOWER = (c) => `<svg viewBox="0 0 16 24"><path d="M8 24V11" stroke="#4f9d38" stroke-width="2"/>${
-      [[8, 2.6], [12.3, 5.7], [10.7, 10.6], [5.3, 10.6], [3.7, 5.7]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>`).join('')
-    }<circle cx="8" cy="7" r="2.6" fill="#ffd36b"/></svg>`;
-    const add = (cls, html, at) => {
-      const el = document.createElement('div');
-      el.className = cls; el.innerHTML = html; el.style.left = `${at * 100}%`;
-      track.insertBefore(el, runner);
-      return el;
+    const loading = document.getElementById('loading'), dio = document.getElementById('ld-dio');
+    const pct = document.getElementById('ld-pct'), tipEl = document.getElementById('ld-tip'), motes = document.getElementById('ld-motes');
+    const items = [...dio.querySelectorAll('.dio-item')].map((el) => ({ el, th: Number(el.dataset.th) }));
+    // Wysepka ma stały projekt 500×430 px; skalujemy ją do ekranu (telefon w poziomie, w pionie, komputer).
+    const fit = () => {
+      const k = Math.max(0.45, Math.min(1.2, (window.innerWidth * 0.9) / 500, (window.innerHeight * 0.6) / 430));
+      loading.style.setProperty('--k', k.toFixed(3));
     };
-    [[0.04, FLOWER('#fff')], [0.2, TUFT], [0.37, FLOWER('#f7a9c4')], [0.55, TUFT], [0.71, FLOWER('#fff')], [0.88, TUFT], [0.99, FLOWER('#b8c8ff')]]
-      .forEach(([at, svg]) => add('ld-deco', svg, at));
-    const marks = [0.14, 0.3, 0.46, 0.62, 0.78, 0.93];
-    const stars = marks.map((m) => add('ld-star', STAR, m));
+    fit();
+    window.addEventListener('resize', fit);
+    // Subtelne pyłki (nocą świetliki) unoszące się w tle.
+    for (let i = 0; i < 26; i++) {
+      const m = document.createElement('i');
+      const s = 2 + Math.random() * 3;
+      m.className = 'ld-mote';
+      m.style.cssText = `left:${(Math.random() * 100).toFixed(1)}%;width:${s.toFixed(1)}px;height:${s.toFixed(1)}px;` +
+        `--dx:${((Math.random() - 0.5) * 140).toFixed(0)}px;animation-duration:${(10 + Math.random() * 10).toFixed(1)}s;` +
+        `animation-delay:${(-Math.random() * 20).toFixed(1)}s`;
+      motes.appendChild(m);
+    }
     const TIPS = [
       'Przytrzymaj skok w powietrzu, a Tuptuś poszybuje na uszach.',
       'Dzbanki i skrzynki kryją gwiazdki, a czasem serduszka.',
@@ -291,24 +348,27 @@
       tipEl.textContent = TIPS[ti++ % TIPS.length];
       tipEl.classList.add('in');
     };
-    let shown = 0, next = 0;
+    // target: prawdziwy postęp (z „pełzaniem” w trakcie etapu), shown: to, co narysowane – płynnie goni target.
+    let target = 0, next = 0, shown = 0, finished = false;
     function draw() {
-      const tw = track.clientWidth, rw = runner.offsetWidth;
-      const x = shown * (tw - rw);
-      runner.style.transform = `translateX(${x}px)`;
-      marks.forEach((m, i) => { if (x + rw * 0.75 >= m * tw) stars[i].classList.add('got'); });
+      for (const it of items) if (!it.on && shown >= it.th) { it.on = true; it.el.classList.add('on'); }
+      pct.textContent = `${Math.round(shown * 100)}%`;
     }
+    function frame() {
+      shown += (target - shown) * 0.12;
+      if (target - shown < 0.0008) shown = target;
+      draw();
+      if (shown >= 1) { dio.classList.add('done'); finished = true; return; }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
     showTip();
     const tipTimer = setInterval(showTip, 5200);
-    const timer = setInterval(() => { shown += (next - shown) * 0.04; draw(); }, 120);
-    window.addEventListener('resize', draw);
+    const creep = setInterval(() => { target += (next - target) * 0.04; }, 120);
     return {
-      stage(p, n, t) {
-        shown = Math.max(shown, p); next = Math.max(n, shown);
-        if (t) text.textContent = t;
-        draw();
-      },
-      done() { clearInterval(timer); clearInterval(tipTimer); shown = next = 1; draw(); },
+      stage(p, n) { target = Math.max(target, p); next = Math.max(n, target); },
+      done() { clearInterval(creep); clearInterval(tipTimer); target = next = 1; },
+      get finished() { return finished; },
     };
   })();
   window.loader = loader;
@@ -317,10 +377,10 @@
     document.getElementById('loading-text').textContent = msg;
     document.getElementById('loading').classList.add('error');
   };
-  loader.stage(0.02, 0.24, 'Budzę Tuptusia…');
+  loader.stage(0.02, 0.24);
   try {
     const THREE = await import('three');
-    loader.stage(0.24, 0.32, 'Rozkładam łąkę…');
+    loader.stage(0.24, 0.32);
     const [rb, bgu, ec, rp, ub, op, re, sp, rf] = await Promise.all([
       import('three/addons/geometries/RoundedBoxGeometry.js'),
       import('three/addons/utils/BufferGeometryUtils.js'),
@@ -352,7 +412,7 @@
   }
   // Pliki gry są zwykłymi skryptami, żeby działały także po otwarciu z dysku (file://).
   // Czekamy chwilę na czcionkę, żeby napisy rysowane w canvasie (dymki, bloki „?”) miały właściwy krój.
-  loader.stage(0.32, 0.36, 'Maluję napisy na drogowskazach…');
+  loader.stage(0.32, 0.36);
   try {
     await Promise.race([
       Promise.all(['500', '600', '700', '800'].map((w) => document.fonts.load(`${w} 24px "Baloo 2"`, 'ąćęłńóśźż?!'))),
@@ -362,7 +422,7 @@
   const files = ['core', 'audio', 'clay', 'props', 'plants', 'bunnymesh', 'rabbit', 'fx', 'physics', 'water', 'world',
                  'entities', 'treasure', 'enemies', 'player', 'level', 'ambient', 'tips', 'daytime', 'ui', 'touch', 'game'];
   for (const [i, f] of files.entries()) {
-    loader.stage(0.36 + 0.24 * (i / files.length), 0.36 + 0.24 * ((i + 1) / files.length), 'Rozsypuję gwiazdki po łące…');
+    loader.stage(0.36 + 0.24 * (i / files.length), 0.36 + 0.24 * ((i + 1) / files.length));
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = `js/${f}.js`;

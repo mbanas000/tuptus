@@ -11,10 +11,10 @@ G.tips = (() => {
   const touch = () => G.input.touchMode;
 
   const CARDS = {
-    highjump: { title: 'Wysoki skok', keys: () => (touch() ? `Stój, trzymaj ${A()} i naciśnij ${J()}` : `${A()} w miejscu, potem ${J()}`), dur: 2.8 },
+    highjump: { title: 'Wysoki skok', keys: () => (touch() ? `Stój, przytrzymaj ${A()} i przesuń kciuk na ${J()}` : `${A()} w miejscu, potem ${J()}`), dur: 2.8 },
     glide: { title: 'Szybowanie na uszach', keys: () => `W powietrzu naciśnij i trzymaj ${J()}`, dur: 3.2 },
     roll: { title: 'Turlanie się w kulkę', keys: () => `${A()} w biegu`, dur: 2.7 },
-    longjump: { title: 'Daleki skok', keys: () => `Turlaj się (${A()}) i skocz ${J()}`, dur: 3.0 },
+    longjump: { title: 'Daleki skok', keys: () => (touch() ? `W biegu ${A()}, potem przesuń kciuk na ${J()}` : `Turlaj się (${A()}) i skocz ${J()}`), dur: 3.0 },
     smash: { title: 'Rozbijanie dzbanków', keys: () => `Skocz na dzbanek ${J()} albo wtocz się w niego`, dur: 2.6 },
     qblock: { title: 'Bloki „?”', keys: () => `Uderz głową od spodu ${J()}`, dur: 2.5 },
   };
@@ -215,11 +215,14 @@ G.tips = (() => {
       document.getElementById('tip-keys').innerHTML = CARDS[id].keys();
       el.classList.remove('hidden', 'out');
       G.sfx.play('pop');
+      // Na telefonie oba skoki robi się przesunięciem kciuka z Kulki na Skok: pokazujemy ten gest na przyciskach.
+      if (id === 'highjump' || id === 'longjump') G.touch.slideHint(true);
       return true;
     },
     hide() {
       if (!current || hiding) return;
       hiding = true;
+      G.touch.slideHint(false);
       el.classList.add('out');
       setTimeout(() => { el.classList.add('hidden'); current = null; hiding = false; }, 450);
     },

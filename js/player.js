@@ -196,12 +196,14 @@ G.Player = class {
           G.fx.sparkle(new THREE.Vector3(this.pos.x, this.pos.y + 0.2, this.pos.z), 12, 0xffffff, 3);
           G.fx.ring(this.pos, 14);
           this.crouching = false;
+          G.emit('special', 'highjump');
         } else if (this.rolling) {
           this.vel.y = 9.2; this.noCut = true;
           const s = Math.max(sp2, 9.6);
           this.vel.x = Math.sin(this.yaw) * s; this.vel.z = Math.cos(this.yaw) * s;
           this.longJump = true; this.rollAir = true; this.rolling = false;
           G.sfx.play('longjump');
+          G.emit('special', 'longjump');
         } else {
           this.vel.y = 10.6; this.noCut = false;
           G.sfx.play('jump');

@@ -2,9 +2,9 @@
 // Główna pętla: renderer z bloomem i winietą, kamera dioramy, „soczystość” (wstrząsy, hit-stop),
 // stany gry (menu → gra → pauza → finał).
 G.start = async () => {
-  // Etap ładowania: napis i postęp na ekranie ładowania, potem chwila oddechu, żeby przeglądarka go narysowała.
-  const step = async (p, next, text) => {
-    if (window.loader) window.loader.stage(p, next, text);
+  // Etap ładowania: postęp na ekranie ładowania, potem chwila oddechu, żeby przeglądarka go narysowała.
+  const step = async (p, next) => {
+    if (window.loader) window.loader.stage(p, next);
     await new Promise((r) => { requestAnimationFrame(() => setTimeout(r, 0)); setTimeout(r, 60); });
   };
   const canvas = document.getElementById('game');
@@ -63,16 +63,16 @@ G.start = async () => {
     G.water.resize();
   });
 
-  await step(0.6, 0.66, 'Budzę żółwie i kolczaste stworki…');
+  await step(0.6, 0.66); // efekty, obiekty, skarby, stworki
   G.fx.init(scene);
   G.ent.init(scene);
   G.treasure.init(scene);
   G.enemies.init(scene);
-  await step(0.66, 0.72, 'Napełniam staw wodą…');
+  await step(0.66, 0.72); // niebo, światło i woda
   G.world.init(scene, renderer);
-  await step(0.72, 0.82, 'Sadzę marchewki i kwiatki…');
+  await step(0.72, 0.82); // poziom: wyspy, rośliny, gwiazdki
   G.level.build(scene);
-  await step(0.82, 0.86, 'Wypuszczam motyle i rybki…');
+  await step(0.82, 0.86); // brzegi, motyle i rybki, pora dnia
   G.water.buildShore();
   G.ambient.init(scene);
   G.daytime.init({ scene, renderer, bloom });
@@ -94,6 +94,7 @@ G.start = async () => {
   function applyGfx(id) {
     const q = GFX[id];
     gfx.level = id;
+    document.body.dataset.gfx = id; // CSS: na niskiej jakości szkło bez rozmywania tła
     const pr = Math.min(window.devicePixelRatio || 1, q.pr);
     renderer.setPixelRatio(pr);
     composer.setPixelRatio(pr);
@@ -105,7 +106,7 @@ G.start = async () => {
   }
   applyGfx(gfx.level);
 
-  await step(0.86, 0.9, 'Szukam zagubionych przyjaciół…');
+  await step(0.86, 0.9); // Tuptuś i stan gry
   const player = new G.Player(scene);
   G.player = player;
   const sp = G.level.spawn;
@@ -121,6 +122,24 @@ G.start = async () => {
   let timedHint = null;
   const K = G.keys;
 
+  // ---------- Liczniki, które chowają się same (jak w Astro Bocie) ----------
+  // Widoczne przez chwilę po zebraniu czegoś, na starcie i gdy Tuptuś stoi; poza tym bledną, żeby nie zasłaniać świata.
+  // Serduszka i czas zostają na ekranie cały czas.
+  const hudEl = document.getElementById('hud');
+  const calm = { t: 0, still: 0, on: false };
+  const showCounters = (sec = 3.5) => { calm.t = Math.max(calm.t, sec); };
+  function updateCalm(dt) {
+    let hide = false;
+    if (S.state === 'play') {
+      const still = (player.grounded || player.swimming) && Math.hypot(player.vel.x, player.vel.z) < 0.4;
+      calm.still = still ? calm.still + dt : 0;
+      if (calm.still > 1.2) showCounters(1);
+      calm.t = Math.max(0, calm.t - dt);
+      hide = calm.t <= 0;
+    }
+    if (hide !== calm.on) { calm.on = hide; hudEl.classList.toggle('calm', hide); }
+  }
+
   // ---------- Zdarzenia ----------
   G.on('juice', (e) => {
     if (e.shake) J.shake = Math.min(0.6, J.shake + e.shake);
@@ -129,6 +148,7 @@ G.start = async () => {
   });
   G.on('star', (s) => {
     S.stars++;
+    showCounters(); // gwiazdka leci do licznika, więc licznik musi być widoczny
     const v = s.mesh.position.clone().project(camera);
     G.ui.flyStar((v.x + 1) / 2 * window.innerWidth, (1 - v.y) / 2 * window.innerHeight, () => {
       S.shownStars++;
@@ -146,12 +166,14 @@ G.start = async () => {
   });
   G.on('friend', (f) => {
     S.friends++;
+    showCounters();
     G.ui.friendFound(f);
     G.ui.toast(`Odnaleziono: ${f.name}! (${S.friends}/${friendsTotal})`, 2800, true);
   });
   G.on('hearts', (e) => G.ui.setHearts(e.hearts, e.lost));
   G.on('gold', () => {
     S.golds++;
+    showCounters();
     G.ui.setGolds(S.golds, goldsTotal, true);
     G.ui.toast(`Złota marchewka! (${S.golds}/${goldsTotal})`, 2800);
     player.rabbit.setExpr('joy', 1.2);
@@ -194,6 +216,7 @@ G.start = async () => {
     player.rabbit.setExpr('joy', 1);
     G.ui.toast(`Zbierz ${starsTotal} gwiazdek i odnajdź ${friendsTotal} przyjaciół!`, 3400);
     timedHint = { text: () => `${K.move()}: bieg  ·  ${K.jump()}: skok`, until: 8 };
+    showCounters(6);
   }
   function pause(on) {
     if (on && S.state === 'play') { S.state = 'paused'; G.ui.pause(true); G.input.clear(); }
@@ -448,7 +471,7 @@ G.start = async () => {
         const card = G.level.cardAt(player.pos);
         if (card) G.tips.show(card);
       }
-      if (S.state === 'play') G.tips.update(dt);
+      if (S.state === 'play') { G.tips.update(dt); G.touch.update(dt); }
       else if (G.tips.active) G.tips.hide();
       if (S.state === 'finish') {
         S.finishT += dt;
@@ -466,6 +489,7 @@ G.start = async () => {
       G.fx.update(sdt);
     }
     updateCamera(dt);
+    updateCalm(dt);
     // Pora dnia płynie, gdy gra nie jest zapauzowana (wybór w panelu działa od razu).
     G.daytime.update(dt, camera, S.state !== 'paused');
     if (G.ui.isDayOpen()) { S.daySync = (S.daySync || 0) - dt; if (S.daySync <= 0) { S.daySync = 0.5; G.ui.syncDay(); } }
@@ -479,21 +503,25 @@ G.start = async () => {
   try { skip = sessionStorage.getItem('tuptus-skip-menu') === '1'; sessionStorage.removeItem('tuptus-skip-menu'); } catch (e) { /* brak dostępu */ }
   player.frozen = true;
   if (!gfx.rec) {
-    await step(0.9, 0.98, `Sprawdzam, jak szybko Tuptuś biega na tym ${G.input.touchMode ? 'telefonie' : 'komputerze'}…`);
+    await step(0.9, 0.98); // pierwsze uruchomienie: krótki test wydajności
     try { gfx.rec = benchmark(); } catch (e) { console.error(e); gfx.rec = 'medium'; }
     applyGfx(gfx.rec);
     saveGfx();
   } else {
     // Pierwsza klatka kompiluje shadery; robimy ją jeszcze za ekranem ładowania, żeby start był płynny.
-    await step(0.9, 0.98, 'Rozgrzewam łapki przed skokami…');
+    await step(0.9, 0.98);
     tick(1 / 60);
   }
-  if (skip) { S.blend = 1; play(); } else G.ui.menu(true);
-  // Ostatnia gwiazdka i krótka chwila, żeby Tuptuś dobiegł do końca wysepki.
-  if (window.loader) window.loader.done();
-  await step(1, 1, 'Gotowe! Hop!');
-  await new Promise((r) => setTimeout(r, 450));
+  // Wysepka kończy się budować: wyskakuje gwiazdka i Tuptuś skacze z radości;
+  // po krótkiej chwili łąka wyostrza się spod matowego szkła.
+  if (window.loader) {
+    window.loader.done();
+    const t0 = performance.now();
+    while (!window.loader.finished && performance.now() - t0 < 2000) await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   G.ui.loaded();
+  if (skip) { S.blend = 1; play(); } else G.ui.menu(true);
   G._state = S;
   G._play = play;
   G._intro = startIntro;
