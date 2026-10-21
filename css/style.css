@@ -378,21 +378,98 @@ body.touch .kbd-only { display: none !important; }
 .criteria .val { font-weight: 600; color: var(--ink-soft); }
 .results .buttons { justify-content: center; margin-left: 0; }
 
-/* ---------- Ładowanie ---------- */
-#loading { background: linear-gradient(#ffe4c4, #f8c9a6); z-index: 50; transition: opacity 0.6s; }
+/* ---------- Ładowanie: niebo o złotej godzinie, łąka i wysepka, po której skacze Tuptuś ---------- */
+/* Animacje to same transformacje i przezroczystość, więc płyną nawet wtedy, gdy gra buduje świat. */
+#loading {
+  z-index: 50; overflow: hidden; transition: opacity 0.6s;
+  background: linear-gradient(#9cc3ec 0%, #f4cfc8 58%, #ffe1ba 100%);
+}
 #loading.fade { opacity: 0; pointer-events: none; }
-.loader { text-align: center; }
-.loader p { font-size: 24px; font-weight: 500; color: #8a5a44; max-width: 520px; }
-#loading.error .hop { display: none; }
-.hop {
-  width: 56px; height: 46px; margin: 0 auto 10px;
-  border-radius: 50% 50% 46% 46%;
-  background: #fff;
-  box-shadow: inset 0 -6px 0 rgba(200, 190, 200, 0.6);
-  animation: hop 0.7s cubic-bezier(.3, 0, .6, 1) infinite alternate;
+.ld-sun {
+  position: absolute; left: 70%; top: 12%; width: 150px; height: 150px; border-radius: 50%;
+  background: radial-gradient(circle, #fff7da 0 30%, rgba(255, 228, 160, 0.6) 33%, rgba(255, 214, 150, 0) 70%);
+}
+.ld-cloud {
+  position: absolute; left: 0; width: 130px; height: 38px; border-radius: 999px; background: #fffaf4; opacity: 0.85;
+  animation: ldCloud linear infinite;
+}
+.ld-cloud::before, .ld-cloud::after { content: ''; position: absolute; border-radius: 50%; background: inherit; }
+.ld-cloud::before { width: 58px; height: 58px; left: 18px; top: -28px; }
+.ld-cloud::after { width: 42px; height: 42px; left: 64px; top: -18px; }
+.ld-hills { position: absolute; left: 0; bottom: 0; width: 100%; height: 30vh; }
+.loader { position: relative; width: min(620px, 86vw); text-align: center; }
+.ld-title {
+  margin: 0; font-size: clamp(48px, 8vw, 84px); font-weight: 700; color: #fff; line-height: 0.95;
+  text-shadow: 0 4px 0 #f4a9bb, 0 8px 0 rgba(180, 90, 120, 0.3), 0 14px 30px rgba(120, 60, 60, 0.3);
+}
+.ld-sub {
+  margin: 4px 0 0; font-size: clamp(17px, 2vw, 24px); font-weight: 600; color: #fff;
+  text-shadow: 0 2px 0 rgba(150, 100, 80, 0.4), 0 4px 14px rgba(80, 50, 40, 0.25);
+}
+.ld-track { position: relative; height: 160px; margin: 10px 14px 0; }
+/* Wysepka jak w grze: trawiasty wierzch z falbanką i ziemia pod spodem. */
+.ld-island {
+  position: absolute; left: -14px; right: -14px; bottom: 0; height: 30px; border-radius: 14px 14px 22px 22px;
+  background: linear-gradient(#88d466 0 11px, #6cbd4f 11px 14px, #c98a5b 14px 100%);
+  box-shadow: 0 8px 0 #a86c44, 0 18px 28px rgba(90, 50, 30, 0.25);
+}
+.ld-island::before {
+  content: ''; position: absolute; left: 6px; right: 6px; top: -6px; height: 12px;
+  background: radial-gradient(circle at 8px 9px, #88d466 7px, transparent 7.5px) 0 0 / 16px 12px repeat-x;
+}
+.ld-deco { position: absolute; bottom: 26px; width: 22px; transform: translateX(-50%); }
+.ld-deco svg { display: block; width: 100%; height: auto; }
+.ld-runner { position: absolute; left: 0; bottom: 26px; width: 108px; height: 97px; transition: transform 0.7s cubic-bezier(.3, .7, .4, 1); will-change: transform; }
+.ld-bunny { position: absolute; inset: 0; transform-origin: 50% 100%; animation: ldHop 0.62s cubic-bezier(.3, 0, .6, 1) infinite; }
+.ld-bunny svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 3px 0 rgba(170, 130, 100, 0.25)); }
+.ld-ear { transform-box: view-box; transform-origin: 78px 32px; animation: ldEar 0.62s ease-in-out infinite; }
+.ld-ear.back { transform-origin: 70px 34px; animation-delay: -0.08s; }
+.ld-shadow {
+  position: absolute; left: 16%; right: 22%; bottom: -5px; height: 10px; border-radius: 50%;
+  background: rgba(60, 100, 30, 0.32); animation: ldShadow 0.62s cubic-bezier(.3, 0, .6, 1) infinite;
+}
+.ld-star { position: absolute; bottom: 112px; width: 30px; height: 30px; margin-left: -15px; animation: ldFloat 2.4s ease-in-out infinite; }
+.ld-star:nth-of-type(even) { animation-delay: -1.2s; }
+.ld-star svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 0 6px rgba(255, 214, 90, 0.95)); }
+.ld-star path { fill: var(--star); stroke: var(--star-dark); stroke-width: 1.2; stroke-linejoin: round; }
+.ld-star.got { animation: ldGot 0.65s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+#loading-text { margin: 16px 0 0; min-height: 1.4em; font-size: 21px; font-weight: 600; color: #7a4f3c; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+.ld-tip {
+  margin: 12px auto 0; max-width: 470px; padding: 9px 18px 11px;
+  background: rgba(255, 250, 241, 0.85); border: 3px solid #fff; border-radius: 18px; box-shadow: 0 8px 22px rgba(90, 60, 40, 0.15);
+}
+.ld-tip span { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #e2557a; }
+#ld-tip { margin: 2px 0 0; min-height: 2.7em; font-size: 16px; line-height: 1.35; color: var(--ink-soft); }
+#ld-tip.in { animation: ldTip 0.45s ease-out; }
+#loading.error .ld-track, #loading.error .ld-tip { display: none; }
+@media (max-height: 520px) {
+  .ld-title { font-size: 44px; }
+  .ld-sub { font-size: 17px; }
+  .ld-track { height: 132px; margin-top: 2px; }
+  .ld-runner { width: 92px; height: 83px; }
+  .ld-star { bottom: 96px; width: 26px; height: 26px; margin-left: -13px; }
+  #loading-text { margin-top: 10px; font-size: 17px; }
+  .ld-tip { margin-top: 8px; padding: 5px 14px 7px; }
+  #ld-tip { min-height: 0; font-size: 14px; }
 }
 
-@keyframes hop { from { transform: translateY(0) scale(1.15, 0.85); } to { transform: translateY(-34px) scale(0.92, 1.08); } }
+@keyframes ldCloud { from { transform: translateX(-180px) scale(var(--s)); } to { transform: translateX(calc(100vw + 40px)) scale(var(--s)); } }
+@keyframes ldHop {
+  0% { transform: translateY(0) scale(1.12, 0.88); }
+  16% { transform: translateY(-10px) scale(0.93, 1.09); }
+  50% { transform: translateY(-40px) scale(0.98, 1.03) rotate(-6deg); }
+  86% { transform: translateY(-5px) scale(1, 1) rotate(2deg); }
+  100% { transform: translateY(0) scale(1.12, 0.88); }
+}
+@keyframes ldShadow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.55); opacity: 0.45; } }
+@keyframes ldEar { 0%, 100% { transform: rotate(8deg); } 50% { transform: rotate(-10deg); } }
+@keyframes ldFloat { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(6deg); } }
+@keyframes ldGot {
+  0% { transform: scale(1); opacity: 1; }
+  40% { transform: translateY(-14px) scale(1.7) rotate(40deg); opacity: 1; }
+  100% { transform: translateY(-50px) scale(0.3) rotate(160deg); opacity: 0; }
+}
+@keyframes ldTip { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 @keyframes heartLost { 0% { transform: scale(1.4); } 100% { transform: scale(1); } }
 @keyframes rise { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }

@@ -200,21 +200,127 @@
   </div>
 </div>
 
-<!-- Ładowanie -->
+<!-- Ładowanie: Tuptuś skacze po wysepce i zbiera gwiazdki – każda to kawałek wczytanej gry -->
 <div id="loading" class="overlay">
+  <div class="ld-sun"></div>
+  <div class="ld-cloud" style="--s:1; top:13%; animation-duration:70s; animation-delay:-12s"></div>
+  <div class="ld-cloud" style="--s:0.7; top:27%; animation-duration:95s; animation-delay:-55s"></div>
+  <div class="ld-cloud" style="--s:0.55; top:7%; animation-duration:120s; animation-delay:-90s"></div>
+  <svg class="ld-hills" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 150C200 60 380 70 560 130C720 180 880 70 1200 110V300H0Z" fill="#b4dc97"/>
+    <path d="M0 220C220 150 420 170 640 210C820 240 1000 160 1200 190V300H0Z" fill="#8fcd72"/>
+  </svg>
   <div class="loader">
-    <div class="hop"></div>
-    <p id="loading-text">Ugniatam plastelinę…</p>
+    <h1 class="ld-title">Tuptuś</h1>
+    <p class="ld-sub">i zagubieni przyjaciele</p>
+    <div class="ld-track" id="ld-track">
+      <div class="ld-island"></div>
+      <div class="ld-runner" id="ld-runner">
+        <div class="ld-shadow"></div>
+        <div class="ld-bunny">
+          <svg viewBox="0 -8 120 108" aria-hidden="true">
+            <defs>
+              <radialGradient id="ldFur" cx="38%" cy="32%" r="72%"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#efd9bc"/></radialGradient>
+              <clipPath id="ldEarClip"><ellipse cx="80" cy="15" rx="7.5" ry="19" transform="rotate(-8 80 15)"/></clipPath>
+            </defs>
+            <g class="ld-ear back"><ellipse cx="66" cy="18" rx="6.5" ry="18" transform="rotate(-24 66 18)" fill="#dcb893"/></g>
+            <circle cx="21" cy="60" r="8.5" fill="#fffaf2"/>
+            <ellipse cx="36" cy="90" rx="14" ry="6" fill="#efd8bb"/>
+            <ellipse cx="50" cy="66" rx="30" ry="23" fill="url(#ldFur)"/>
+            <ellipse cx="72" cy="89" rx="7.5" ry="5.5" fill="#efd8bb"/>
+            <circle cx="80" cy="48" r="21" fill="url(#ldFur)"/>
+            <g class="ld-ear">
+              <ellipse cx="80" cy="15" rx="7.5" ry="19" transform="rotate(-8 80 15)" fill="url(#ldFur)"/>
+              <rect x="66" y="-8" width="28" height="10" fill="#c99a6e" clip-path="url(#ldEarClip)"/>
+              <ellipse cx="80.8" cy="17" rx="3.5" ry="12.5" transform="rotate(-8 80.8 17)" fill="#f5b3c1"/>
+            </g>
+            <ellipse cx="95" cy="56" rx="8.5" ry="7" fill="#fffaf3"/>
+            <ellipse cx="87" cy="58.5" rx="4.2" ry="2.6" fill="#f7a9b8" opacity="0.75"/>
+            <ellipse cx="88" cy="44" rx="5" ry="6" fill="#3b2a24"/>
+            <ellipse cx="88.4" cy="44.8" rx="3.7" ry="4.6" fill="#a8682f"/>
+            <circle cx="88.8" cy="45.4" r="2.2" fill="#2b1d18"/>
+            <circle cx="86.9" cy="42.6" r="1.5" fill="#fff"/>
+            <ellipse cx="101.5" cy="52" rx="2.8" ry="2.2" fill="#f08aa2"/>
+            <path d="M100.5 55.5q-1 3.2-4.2 2.6" fill="none" stroke="#7a5446" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <p id="loading-text">Budzę Tuptusia…</p>
+    <div class="ld-tip"><span>Wskazówka</span><p id="ld-tip"></p></div>
   </div>
 </div>
 
 <script type="module">
+  // ---------- Ekran ładowania ----------
+  // Tuptuś przesuwa się po wysepce zgodnie z postępem i zbiera po drodze gwiazdki.
+  // stage(p, next, tekst): postęp skacze do p i powoli „pełznie” w stronę next, dopóki trwa dany etap.
+  const loader = (() => {
+    const track = document.getElementById('ld-track'), runner = document.getElementById('ld-runner');
+    const text = document.getElementById('loading-text'), tipEl = document.getElementById('ld-tip');
+    const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
+    const TUFT = '<svg viewBox="0 0 24 16"><path d="M2 16L6 3l3 13zM8 16l5-16 3 16zM15 16l5-11 2 11z" fill="#5fae45"/></svg>';
+    const FLOWER = (c) => `<svg viewBox="0 0 16 24"><path d="M8 24V11" stroke="#4f9d38" stroke-width="2"/>${
+      [[8, 2.6], [12.3, 5.7], [10.7, 10.6], [5.3, 10.6], [3.7, 5.7]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>`).join('')
+    }<circle cx="8" cy="7" r="2.6" fill="#ffd36b"/></svg>`;
+    const add = (cls, html, at) => {
+      const el = document.createElement('div');
+      el.className = cls; el.innerHTML = html; el.style.left = `${at * 100}%`;
+      track.insertBefore(el, runner);
+      return el;
+    };
+    [[0.04, FLOWER('#fff')], [0.2, TUFT], [0.37, FLOWER('#f7a9c4')], [0.55, TUFT], [0.71, FLOWER('#fff')], [0.88, TUFT], [0.99, FLOWER('#b8c8ff')]]
+      .forEach(([at, svg]) => add('ld-deco', svg, at));
+    const marks = [0.14, 0.3, 0.46, 0.62, 0.78, 0.93];
+    const stars = marks.map((m) => add('ld-star', STAR, m));
+    const TIPS = [
+      'Przytrzymaj skok w powietrzu, a Tuptuś poszybuje na uszach.',
+      'Dzbanki i skrzynki kryją gwiazdki, a czasem serduszka.',
+      'Na żółwie można skakać. Kolczastych stworków lepiej nie dotykać.',
+      'Rozpędzony Tuptuś zwija się w kulkę i rozbija skrzynki bez zatrzymywania.',
+      'Gdzieś wysoko błyszczy pięć złotych marchewek. Rozglądaj się!',
+      'Woda nie jest groźna, Tuptuś świetnie pływa.',
+      'Gdy zostaną trzy gwiazdki, wskażą je świetlne słupy.',
+      'Odnalezieni przyjaciele idą za Tuptusiem i cieszą się z każdej gwiazdki.',
+      'Coś zasłania widok? Obróć kamerę o 45°.',
+      'Uderz głową blok „?” od spodu, a coś z niego wyskoczy.',
+    ];
+    let ti = Math.floor(Math.random() * TIPS.length);
+    const showTip = () => {
+      tipEl.classList.remove('in'); void tipEl.offsetWidth;
+      tipEl.textContent = TIPS[ti++ % TIPS.length];
+      tipEl.classList.add('in');
+    };
+    let shown = 0, next = 0;
+    function draw() {
+      const tw = track.clientWidth, rw = runner.offsetWidth;
+      const x = shown * (tw - rw);
+      runner.style.transform = `translateX(${x}px)`;
+      marks.forEach((m, i) => { if (x + rw * 0.75 >= m * tw) stars[i].classList.add('got'); });
+    }
+    showTip();
+    const tipTimer = setInterval(showTip, 5200);
+    const timer = setInterval(() => { shown += (next - shown) * 0.04; draw(); }, 120);
+    window.addEventListener('resize', draw);
+    return {
+      stage(p, n, t) {
+        shown = Math.max(shown, p); next = Math.max(n, shown);
+        if (t) text.textContent = t;
+        draw();
+      },
+      done() { clearInterval(timer); clearInterval(tipTimer); shown = next = 1; draw(); },
+    };
+  })();
+  window.loader = loader;
+
   const fail = (msg) => {
     document.getElementById('loading-text').textContent = msg;
     document.getElementById('loading').classList.add('error');
   };
+  loader.stage(0.02, 0.24, 'Budzę Tuptusia…');
   try {
     const THREE = await import('three');
+    loader.stage(0.24, 0.32, 'Rozkładam łąkę…');
     const [rb, bgu, ec, rp, ub, op, re, sp, rf] = await Promise.all([
       import('three/addons/geometries/RoundedBoxGeometry.js'),
       import('three/addons/utils/BufferGeometryUtils.js'),
@@ -246,6 +352,7 @@
   }
   // Pliki gry są zwykłymi skryptami, żeby działały także po otwarciu z dysku (file://).
   // Czekamy chwilę na czcionkę, żeby napisy rysowane w canvasie (dymki, bloki „?”) miały właściwy krój.
+  loader.stage(0.32, 0.36, 'Maluję napisy na drogowskazach…');
   try {
     await Promise.race([
       Promise.all(['500', '600', '700', '800'].map((w) => document.fonts.load(`${w} 24px "Baloo 2"`, 'ąćęłńóśźż?!'))),
@@ -254,7 +361,8 @@
   } catch (e) { /* bez czcionki też zagramy */ }
   const files = ['core', 'audio', 'clay', 'props', 'plants', 'bunnymesh', 'rabbit', 'fx', 'physics', 'water', 'world',
                  'entities', 'treasure', 'enemies', 'player', 'level', 'ambient', 'tips', 'daytime', 'ui', 'touch', 'game'];
-  for (const f of files) {
+  for (const [i, f] of files.entries()) {
+    loader.stage(0.36 + 0.24 * (i / files.length), 0.36 + 0.24 * ((i + 1) / files.length), 'Rozsypuję gwiazdki po łące…');
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = `js/${f}.js`;
@@ -264,7 +372,7 @@
     }).catch((e) => { fail(e.message); throw e; });
   }
   try {
-    G.start();
+    await G.start();
   } catch (e) {
     console.error(e);
     fail('Coś poszło nie tak przy starcie gry: ' + e.message);

@@ -1,7 +1,12 @@
 'use strict';
 // Główna pętla: renderer z bloomem i winietą, kamera dioramy, „soczystość” (wstrząsy, hit-stop),
 // stany gry (menu → gra → pauza → finał).
-G.start = () => {
+G.start = async () => {
+  // Etap ładowania: napis i postęp na ekranie ładowania, potem chwila oddechu, żeby przeglądarka go narysowała.
+  const step = async (p, next, text) => {
+    if (window.loader) window.loader.stage(p, next, text);
+    await new Promise((r) => { requestAnimationFrame(() => setTimeout(r, 0)); setTimeout(r, 60); });
+  };
   const canvas = document.getElementById('game');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
   // Ostateczną rozdzielczość i resztę ustawień ustala wybrany poziom grafiki (applyGfx niżej).
@@ -58,12 +63,16 @@ G.start = () => {
     G.water.resize();
   });
 
+  await step(0.6, 0.66, 'Budzę żółwie i kolczaste stworki…');
   G.fx.init(scene);
   G.ent.init(scene);
   G.treasure.init(scene);
   G.enemies.init(scene);
+  await step(0.66, 0.72, 'Napełniam staw wodą…');
   G.world.init(scene, renderer);
+  await step(0.72, 0.82, 'Sadzę marchewki i kwiatki…');
   G.level.build(scene);
+  await step(0.82, 0.86, 'Wypuszczam motyle i rybki…');
   G.water.buildShore();
   G.ambient.init(scene);
   G.daytime.init({ scene, renderer, bloom });
@@ -96,6 +105,7 @@ G.start = () => {
   }
   applyGfx(gfx.level);
 
+  await step(0.86, 0.9, 'Szukam zagubionych przyjaciół…');
   const player = new G.Player(scene);
   G.player = player;
   const sp = G.level.spawn;
@@ -469,11 +479,20 @@ G.start = () => {
   try { skip = sessionStorage.getItem('tuptus-skip-menu') === '1'; sessionStorage.removeItem('tuptus-skip-menu'); } catch (e) { /* brak dostępu */ }
   player.frozen = true;
   if (!gfx.rec) {
+    await step(0.9, 0.98, `Sprawdzam, jak szybko Tuptuś biega na tym ${G.input.touchMode ? 'telefonie' : 'komputerze'}…`);
     try { gfx.rec = benchmark(); } catch (e) { console.error(e); gfx.rec = 'medium'; }
     applyGfx(gfx.rec);
     saveGfx();
+  } else {
+    // Pierwsza klatka kompiluje shadery; robimy ją jeszcze za ekranem ładowania, żeby start był płynny.
+    await step(0.9, 0.98, 'Rozgrzewam łapki przed skokami…');
+    tick(1 / 60);
   }
   if (skip) { S.blend = 1; play(); } else G.ui.menu(true);
+  // Ostatnia gwiazdka i krótka chwila, żeby Tuptuś dobiegł do końca wysepki.
+  if (window.loader) window.loader.done();
+  await step(1, 1, 'Gotowe! Hop!');
+  await new Promise((r) => setTimeout(r, 450));
   G.ui.loaded();
   G._state = S;
   G._play = play;
