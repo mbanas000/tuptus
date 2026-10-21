@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tuptuś i zagubieni przyjaciele</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-left">
+    <div class="pill" id="hud-stars">
+      <svg viewBox="0 0 24 24" class="ico star"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>
+      <span id="stars-count">0/0</span>
+    </div>
+    <div class="pill friends" id="hud-friends"></div>
+    <div class="pill" id="hud-golds">
+      <svg viewBox="0 0 24 24" class="ico gold"><path class="body" d="M14.6 6.2c1.9 1.4 2.2 3.6 1 5.2L7.4 21.6c-.7.8-2 .1-1.6-.9l4.7-12.4c.9-2.2 3.2-3.3 4.1-2.1z"/><path class="leaf" d="M15.4 6.1c.2-1.8 1.1-3.3 2.6-4.1.3 1.6-.3 3.1-1.5 4.3 1.4-.6 3-.6 4.3.2-1.2 1.1-2.9 1.4-4.5.9z"/></svg>
+      <span id="golds-count">0/0</span>
+    </div>
+  </div>
+  <div class="hud-right">
+    <div id="hearts"></div>
+    <div class="pill timer" id="timer">0:00</div>
+  </div>
+  <div id="hint"></div>
+  <div id="toast"></div>
+</div>
+
+<!-- Karta z podpowiedzią ruchu (mała scena 3D) -->
+<div id="tipcard" class="hidden">
+  <div class="tip-view"><canvas id="tip-canvas" width="236" height="150"></canvas></div>
+  <div class="tip-text">
+    <p class="tip-label">Nowy ruch</p>
+    <h3 id="tip-title"></h3>
+    <p id="tip-keys"></p>
+  </div>
+</div>
+
+<!-- Przelot kamery na starcie poziomu -->
+<div id="intro" class="hidden">
+  <div class="intro-title">
+    <p class="intro-sub">Poziom 1</p>
+    <h1>Słoneczna Łąka</h1>
+  </div>
+  <p class="intro-skip"><span class="k">Spacja</span> pomiń</p>
+</div>
+
+<!-- Menu startowe -->
+<div id="menu" class="overlay hidden">
+  <div class="menu-card">
+    <h1 class="title">Tuptuś</h1>
+    <p class="subtitle">i zagubieni przyjaciele</p>
+    <p class="story">Wiosenna burza rozsypała gwiazdki po całej łące, a przyjaciele Tuptusia pogubili się, goniąc je. Pomóż mu zebrać wszystkie gwiazdki i odnaleźć przyjaciół!</p>
+    <div class="buttons">
+      <button class="btn primary" id="btn-play">Graj</button>
+      <button class="btn" id="btn-help">Jak grać?</button>
+      <button class="btn" id="btn-day-menu">Pora dnia</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sterowanie -->
+<div id="help" class="overlay hidden">
+  <div class="panel">
+    <h2>Jak grać?</h2>
+    <ul class="keys">
+      <li><span class="k">W A S D</span><span class="plus">albo</span>
+        <span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(-90deg)"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span><span class="k k-arr"><svg class="arr" viewBox="0 0 24 24"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span><span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(180deg)"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span><span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(90deg)"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span>
+        <em>bieganie</em></li>
+      <li><span class="k">Spacja</span><em>skok</em></li>
+      <li><span class="k">Spacja</span><em>w powietrzu, przytrzymaj: szybowanie na uszach</em></li>
+      <li><span class="k">Shift</span><em>w biegu: turlanie się w kulkę</em></li>
+      <li><span class="k">Shift</span><span class="plus">+</span><span class="k">Spacja</span><em>w miejscu: wysoki skok z przykucnięcia</em></li>
+      <li><span class="k">Q</span><span class="k">E</span><em>obrót kamery o 45°</em></li>
+      <li><span class="k">T</span><em>następna pora dnia</em></li>
+      <li><span class="k">Esc</span><em>pauza</em></li>
+    </ul>
+    <p class="tip">Skacz na żółwie, ale omijaj kolczaste stworki. Dzbanki i skrzynki rozbijesz skokiem albo kulką. Woda nie jest groźna, bo Tuptuś świetnie pływa. Gdzieś wysoko błyszczy pięć złotych marchewek…</p>
+    <button class="btn primary" id="btn-help-close">Rozumiem</button>
+  </div>
+</div>
+
+<!-- Pauza -->
+<div id="pause" class="overlay hidden">
+  <div class="panel small">
+    <h2>Pauza</h2>
+    <div class="buttons col">
+      <button class="btn primary" id="btn-resume">Wróć do gry</button>
+      <button class="btn" id="btn-pause-help">Jak grać?</button>
+      <button class="btn" id="btn-day-pause">Pora dnia</button>
+      <button class="btn" id="btn-restart">Zacznij od nowa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pora dnia -->
+<div id="daypanel" class="overlay hidden">
+  <div class="panel day">
+    <h2>Pora dnia</h2>
+    <button class="switch-row" id="day-cycle" role="switch" aria-checked="true">
+      <span class="sw-label">Pora dnia zmienia się sama<small>Pełna doba trwa ok. 10 minut</small></span>
+      <span class="sw"><span class="knob"></span></span>
+    </button>
+    <div class="day-tiles">
+      <button class="day-tile" data-id="dusk"><span class="sky dusk"></span><span>Zachód</span></button>
+      <button class="day-tile" data-id="night"><span class="sky night"></span><span>Noc</span></button>
+      <button class="day-tile" data-id="dawn"><span class="sky dawn"></span><span>Świt</span></button>
+    </div>
+    <p class="day-now">Teraz: <b id="day-now">Zachód</b> · w grze <span class="k">T</span> przełącza dalej</p>
+    <button class="btn primary" id="btn-day-close">Gotowe</button>
+  </div>
+</div>
+
+<!-- Wyniki -->
+<div id="results" class="overlay hidden">
+  <div class="panel results">
+    <h2>Brawo, Tuptusiu!</h2>
+    <div class="big-stars">
+      <svg viewBox="0 0 24 24" class="bstar" id="rs1"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>
+      <svg viewBox="0 0 24 24" class="bstar mid" id="rs2"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>
+      <svg viewBox="0 0 24 24" class="bstar" id="rs3"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>
+    </div>
+    <ul class="criteria">
+      <li id="rc1"><span class="dot"></span><span class="lbl">Wszystkie gwiazdki</span><span class="val" id="rv1"></span></li>
+      <li id="rc2"><span class="dot"></span><span class="lbl">Odnalezieni przyjaciele</span><span class="val" id="rv2"></span></li>
+      <li id="rc3"><span class="dot"></span><span class="lbl">Czas poniżej <b id="rtarget"></b></span><span class="val" id="rv3"></span></li>
+      <li id="rc4" class="bonus"><span class="dot"></span><span class="lbl">Bonus: złote marchewki</span><span class="val" id="rv4"></span></li>
+    </ul>
+    <div class="buttons">
+      <button class="btn primary" id="btn-again">Zagraj ponownie</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ładowanie -->
+<div id="loading" class="overlay">
+  <div class="loader">
+    <div class="hop"></div>
+    <p id="loading-text">Ugniatam plastelinę…</p>
+  </div>
+</div>
+
+<script type="module">
+  const fail = (msg) => {
+    document.getElementById('loading-text').textContent = msg;
+    document.getElementById('loading').classList.add('error');
+  };
+  try {
+    const THREE = await import('three');
+    const [rb, bgu, ec, rp, ub, op, re, sp, rf] = await Promise.all([
+      import('three/addons/geometries/RoundedBoxGeometry.js'),
+      import('three/addons/utils/BufferGeometryUtils.js'),
+      import('three/addons/postprocessing/EffectComposer.js'),
+      import('three/addons/postprocessing/RenderPass.js'),
+      import('three/addons/postprocessing/UnrealBloomPass.js'),
+      import('three/addons/postprocessing/OutputPass.js'),
+      import('three/addons/environments/RoomEnvironment.js'),
+      import('three/addons/postprocessing/ShaderPass.js'),
+      import('three/addons/objects/Reflector.js'),
+    ]);
+    window.THREE = THREE;
+    window.ADDONS = {
+      RoundedBoxGeometry: rb.RoundedBoxGeometry,
+      mergeGeometries: bgu.mergeGeometries,
+      mergeVertices: bgu.mergeVertices,
+      EffectComposer: ec.EffectComposer,
+      RenderPass: rp.RenderPass,
+      UnrealBloomPass: ub.UnrealBloomPass,
+      OutputPass: op.OutputPass,
+      RoomEnvironment: re.RoomEnvironment,
+      ShaderPass: sp.ShaderPass,
+      Reflector: rf.Reflector,
+    };
+  } catch (e) {
+    console.error(e);
+    fail('Nie udało się wczytać three.js. Sprawdź połączenie z internetem i odśwież stronę.');
+    throw e;
+  }
+  // Pliki gry są zwykłymi skryptami, żeby działały także po otwarciu z dysku (file://).
+  // Czekamy chwilę na czcionkę, żeby napisy rysowane w canvasie (dymki, bloki „?”) miały właściwy krój.
+  try {
+    await Promise.race([
+      Promise.all(['500', '600', '700', '800'].map((w) => document.fonts.load(`${w} 24px "Baloo 2"`, 'ąćęłńóśźż?!'))),
+      new Promise((r) => setTimeout(r, 2500)),
+    ]);
+  } catch (e) { /* bez czcionki też zagramy */ }
+  const files = ['core', 'audio', 'clay', 'props', 'plants', 'bunnymesh', 'rabbit', 'fx', 'physics', 'water', 'world',
+                 'entities', 'treasure', 'enemies', 'player', 'level', 'ambient', 'tips', 'daytime', 'ui', 'game'];
+  for (const f of files) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = `js/${f}.js`;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error(`Brak pliku js/${f}.js`));
+      document.body.appendChild(s);
+    }).catch((e) => { fail(e.message); throw e; });
+  }
+  try {
+    G.start();
+  } catch (e) {
+    console.error(e);
+    fail('Coś poszło nie tak przy starcie gry: ' + e.message);
+  }
+</script>
+</body>
+</html>
