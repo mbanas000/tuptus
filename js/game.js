@@ -4,7 +4,8 @@
 G.start = () => {
   const canvas = document.getElementById('game');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  // Telefony mają gęste ekrany, ale słabsze karty graficzne: zaczynamy od nieco niższej rozdzielczości.
+  const dpr = Math.min(window.devicePixelRatio || 1, G.input.touchMode ? 1.25 : 1.5);
   renderer.setPixelRatio(dpr);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
@@ -39,9 +40,19 @@ G.start = () => {
   composer.addPass(vignette);
   composer.addPass(new ADDONS.OutputPass());
 
-  window.addEventListener('resize', () => {
+  // Na ekranie pionowym (telefon) poszerzamy kadr, żeby widać było więcej poziomu na boki,
+  // a na małym ekranie kamera podjeżdża bliżej, żeby Tuptuś nie był malutki.
+  let camZoom = 1;
+  const fitCamera = () => {
+    camZoom = Math.min(window.innerWidth, window.innerHeight) < 540 ? 0.82 : 1;
     camera.aspect = window.innerWidth / window.innerHeight;
+    const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(18)) * Math.max(camera.aspect, 1.15));
+    camera.fov = G.u.clamp(THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(hfov / 2) / camera.aspect)), 36, 64);
     camera.updateProjectionMatrix();
+  };
+  fitCamera();
+  window.addEventListener('resize', () => {
+    fitCamera();
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
     G.water.resize();
@@ -67,11 +78,9 @@ G.start = () => {
   const J = { shake: 0, stop: 0, flash: 0 };
   const starsTotal = L.stars.length, friendsTotal = L.friends.length, goldsTotal = G.treasure.list.golds.length;
   G.camYaw = 0;
+  // Podpowiedzi na czas; tekst to funkcja, bo plakietki zależą od sterowania (klawiatura / dotyk).
   let timedHint = null;
-  const k = (t) => `<span class="k">${t}</span>`;
-  // Cztery klawisze strzałek jako graficzne plakietki (← ↑ ↓ →).
-  const arrows = () => [-90, 0, 180, 90].map((r) =>
-    `<span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(${r}deg)"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span>`).join('');
+  const K = G.keys;
 
   // ---------- Zdarzenia ----------
   G.on('juice', (e) => {
@@ -119,6 +128,7 @@ G.start = () => {
     V3(117, 2, -3), V3(93, 2, -2), V3(68, 8, -3), V3(48, 3, -2), V3(27, 1, 1), V3(sp.x, sp.y + 0.9, sp.z - 1.5)]);
   function startIntro() {
     G.sfx.init();
+    G.touch.enterFullscreen();
     G.input.clear();
     G.ui.menu(false);
     S.state = 'intro';
@@ -144,7 +154,7 @@ G.start = () => {
     if (player.grounded) { player.vel.y = 8; player.grounded = false; }
     player.rabbit.setExpr('joy', 1);
     G.ui.toast(`Zbierz ${starsTotal} gwiazdek i odnajdź ${friendsTotal} przyjaciół!`, 3400);
-    timedHint = { text: `${k('W A S D')} albo ${arrows()}: bieg  ·  ${k('Spacja')}: skok`, until: 8 };
+    timedHint = { text: () => `${K.move()}: bieg  ·  ${K.jump()}: skok`, until: 8 };
   }
   function pause(on) {
     if (on && S.state === 'play') { S.state = 'paused'; G.ui.pause(true); G.input.clear(); }
@@ -207,12 +217,17 @@ G.start = () => {
       if (G.ui.isDayOpen()) G.ui.syncDay();
     }
     // Obrót kamery co 45°.
-    if ((e.code === 'KeyQ' || e.code === 'KeyE') && S.state === 'play' && !e.repeat) {
-      S.yawTarget += (e.code === 'KeyQ' ? -1 : 1) * (Math.PI / 4);
-      S.rotHint = true;
-      G.sfx.play('whoosh');
-    }
+    if ((e.code === 'KeyQ' || e.code === 'KeyE') && !e.repeat) rotateCam(e.code === 'KeyQ' ? -1 : 1);
   });
+  function rotateCam(dir) {
+    if (S.state !== 'play') return;
+    S.yawTarget += dir * (Math.PI / 4);
+    S.rotHint = true;
+    G.sfx.play('whoosh');
+  }
+  // Przyciski dotykowe: obrót kamery i pauza.
+  G.on('camRotate', rotateCam);
+  G.on('pauseToggle', () => { if (S.state === 'play') pause(true); else if (S.state === 'paused') pause(false); });
   window.addEventListener('pointerdown', () => { if (S.state === 'intro') endIntro(); });
 
   G.ui.setStars(0, starsTotal);
@@ -240,7 +255,7 @@ G.start = () => {
     G.camYaw = G.u.damp(G.camYaw, S.yawTarget, 7, dt);
     const sy = Math.sin(G.camYaw), cy = Math.cos(G.camYaw);
     const high = G.u.clamp((focusY - 3) / 6, 0, 1);
-    let dist = 14.5 + high * 3, height = 7.8 + high * 2;
+    let dist = (14.5 + high * 3) * camZoom, height = (7.8 + high * 2) * camZoom;
     if (S.state === 'finish') { const f = Math.min(1, S.finishT / 1.5); dist -= f * 6; height -= f * 3.5; }
     camPlay.set(look.x + sy * dist, look.y + height, look.z + cy * dist);
     lookPlay.set(look.x - sy * 1.5, look.y + 0.9, look.z - cy * 1.5);
@@ -311,8 +326,15 @@ G.start = () => {
   // Ręczny krok symulacji (przydatny do testów, gdy karta jest w tle).
   G._tick = (dt = 1 / 60, n = 1) => { for (let i = 0; i < n; i++) tick(dt); };
 
+  let shownState = null;
   function tick(dt) {
     if (dt <= 0) return;
+    // Stan gry na <body>: CSS pokazuje przyciski dotykowe tylko w trakcie rozgrywki.
+    if (S.state !== shownState) {
+      shownState = S.state;
+      document.body.dataset.state = S.state;
+      G.touch.reset();
+    }
     // Hit-stop: na ułamek sekundy świat prawie staje (uderzenie „czuć”).
     let sdt = dt;
     if (J.stop > 0) { J.stop -= dt; sdt = dt * 0.08; }
@@ -345,14 +367,14 @@ G.start = () => {
         G.ui.setTime(S.time);
         if (player.swimming && !S.swamOnce) {
           S.swamOnce = true;
-          timedHint = { text: `Tuptuś świetnie pływa! ${k('Spacja')}: wyskok z wody`, until: S.time + 5 };
+          timedHint = { text: () => `Tuptuś świetnie pływa! ${K.jump()}: wyskok z wody`, until: S.time + 5 };
         }
         if (S.time > 9 && !S.rotHintShown && !S.rotHint) {
           S.rotHintShown = true;
-          timedHint = { text: `${k('Q')} ${k('E')}: obracaj kamerę, żeby lepiej widzieć`, until: S.time + 5 };
+          timedHint = { text: () => `${K.cam()}: obracaj kamerę, żeby lepiej widzieć`, until: S.time + 5 };
         }
         const zone = G.level.hintAt(player.pos);
-        G.ui.hint(zone || (timedHint && S.time < timedHint.until ? timedHint.text : null));
+        G.ui.hint(zone || (timedHint && S.time < timedHint.until ? timedHint.text() : null));
         // Karta z nowym ruchem w lewym dolnym rogu (każda raz na rozgrywkę).
         const card = G.level.cardAt(player.pos);
         if (card) G.tips.show(card);

@@ -2,7 +2,10 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f6d6b2">
 <title>Tuptuś i zagubieni przyjaciele</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +23,21 @@
 <body>
 <canvas id="game"></canvas>
 
+<!-- Sterowanie dotykowe (telefon, tablet): widoczne tylko w trakcie gry w trybie dotykowym -->
+<div id="touch">
+  <div id="stick"><div class="knob"></div></div>
+  <button class="tb-btn tb-cam" data-dir="-1" aria-label="Obróć kamerę w lewo"><svg viewBox="0 0 24 24"><path d="M12 5.2a6.8 6.8 0 1 1-6.5 4.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M3.6 4.6l1.9 5.4 5.4-1.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <button class="tb-btn tb-cam" data-dir="1" aria-label="Obróć kamerę w prawo"><svg viewBox="0 0 24 24" style="transform:scaleX(-1)"><path d="M12 5.2a6.8 6.8 0 1 1-6.5 4.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M3.6 4.6l1.9 5.4 5.4-1.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <div class="tb-btn tb-act" id="tb-act" aria-label="Kulka">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#fff"/><path d="M7.2 9.5a5.6 5.6 0 0 1 9.6 0M6.8 14.2a5.6 5.6 0 0 0 10.4 0" fill="none" stroke="#e4789f" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <span>Kulka</span>
+  </div>
+  <div class="tb-btn tb-jump" id="tb-jump" aria-label="Skok">
+    <svg viewBox="0 0 24 24"><path d="M12 4.5l7 7.5h-4.4v7.5H9.4V12H5z" fill="currentColor"/></svg>
+    <span>Skok</span>
+  </div>
+</div>
+
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div class="hud-left">
@@ -36,6 +54,7 @@
   <div class="hud-right">
     <div id="hearts"></div>
     <div class="pill timer" id="timer">0:00</div>
+    <button class="pill pause-btn touch-only" id="btn-pause-touch" aria-label="Pauza"><svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.6"/><rect x="13.5" y="5" width="4" height="14" rx="1.6"/></svg></button>
   </div>
   <div id="hint"></div>
   <div id="toast"></div>
@@ -57,7 +76,7 @@
     <p class="intro-sub">Poziom 1</p>
     <h1>Słoneczna Łąka</h1>
   </div>
-  <p class="intro-skip"><span class="k">Spacja</span> pomiń</p>
+  <p class="intro-skip"><span class="kbd-only"><span class="k">Spacja</span> pomiń</span><span class="touch-only">Dotknij ekranu, aby pominąć</span></p>
 </div>
 
 <!-- Menu startowe -->
@@ -78,7 +97,15 @@
 <div id="help" class="overlay hidden">
   <div class="panel">
     <h2>Jak grać?</h2>
-    <ul class="keys">
+    <ul class="keys touch-only">
+      <li><span class="k tb tb-s">lewy kciuk</span><em>przesuwaj po lewej stronie ekranu: bieganie</em></li>
+      <li><span class="k tb tb-j">Skok</span><em>skok; w powietrzu przytrzymaj: szybowanie na uszach</em></li>
+      <li><span class="k tb tb-a">Kulka</span><em>w biegu: turlanie się w kulkę</em></li>
+      <li><span class="k tb tb-a">Kulka</span><span class="plus">+</span><span class="k tb tb-j">Skok</span><em>w miejscu: wysoki skok (możesz przesunąć kciuk z Kulki na Skok)</em></li>
+      <li><span class="k tb tb-c"><svg class="arr" viewBox="0 0 24 24"><path d="M12 5.2a6.8 6.8 0 1 1-6.5 4.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M3.6 4.6l1.9 5.4 5.4-1.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="k tb tb-c"><svg class="arr" viewBox="0 0 24 24" style="transform:scaleX(-1)"><path d="M12 5.2a6.8 6.8 0 1 1-6.5 4.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M3.6 4.6l1.9 5.4 5.4-1.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><em>obrót kamery o 45°</em></li>
+      <li><span class="k tb tb-c"><svg class="arr" viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.6" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1.6" fill="currentColor"/></svg></span><em>pauza (tam zmienisz też porę dnia)</em></li>
+    </ul>
+    <ul class="keys kbd-only">
       <li><span class="k">W A S D</span><span class="plus">albo</span>
         <span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(-90deg)"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span><span class="k k-arr"><svg class="arr" viewBox="0 0 24 24"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span><span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(180deg)"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span><span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(90deg)"><path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/></svg></span>
         <em>bieganie</em></li>
@@ -121,7 +148,7 @@
       <button class="day-tile" data-id="night"><span class="sky night"></span><span>Noc</span></button>
       <button class="day-tile" data-id="dawn"><span class="sky dawn"></span><span>Świt</span></button>
     </div>
-    <p class="day-now">Teraz: <b id="day-now">Zachód</b> · w grze <span class="k">T</span> przełącza dalej</p>
+    <p class="day-now">Teraz: <b id="day-now">Zachód</b><span class="kbd-only"> · w grze <span class="k">T</span> przełącza dalej</span></p>
     <button class="btn primary" id="btn-day-close">Gotowe</button>
   </div>
 </div>
@@ -144,6 +171,16 @@
     <div class="buttons">
       <button class="btn primary" id="btn-again">Zagraj ponownie</button>
     </div>
+  </div>
+</div>
+
+<!-- Telefon trzymany pionowo: prośba o obrócenie (można zostać w pionie) -->
+<div id="rotate" class="overlay">
+  <div class="panel small rotate-card">
+    <div class="phone-ico"><svg viewBox="0 0 48 48"><rect x="9" y="14" width="30" height="20" rx="4" fill="#fff" stroke="#5f7595" stroke-width="3"/><circle cx="34" cy="24" r="1.8" fill="#5f7595"/><path d="M14 8.5a14 14 0 0 1 17-1.5" fill="none" stroke="#e2557a" stroke-width="2.6" stroke-linecap="round"/><path d="M28.5 3.8l3 3.4-3.6 2.6" fill="none" stroke="#e2557a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h2>Obróć telefon</h2>
+    <p class="tip">Tuptuś najlepiej wygląda w poziomie. Wtedy widać więcej łąki, a kciuki wygodnie sięgają przycisków.</p>
+    <button class="btn" id="btn-rotate-skip">Zostań w pionie</button>
   </div>
 </div>
 
@@ -200,7 +237,7 @@
     ]);
   } catch (e) { /* bez czcionki też zagramy */ }
   const files = ['core', 'audio', 'clay', 'props', 'plants', 'bunnymesh', 'rabbit', 'fx', 'physics', 'water', 'world',
-                 'entities', 'treasure', 'enemies', 'player', 'level', 'ambient', 'tips', 'daytime', 'ui', 'game'];
+                 'entities', 'treasure', 'enemies', 'player', 'level', 'ambient', 'tips', 'daytime', 'ui', 'touch', 'game'];
   for (const f of files) {
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');

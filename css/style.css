@@ -24,7 +24,12 @@ html, body {
   color: var(--ink);
   user-select: none;
   -webkit-user-select: none;
+  /* Telefon: bez przewijania, powiększania stuknięciem i podświetlania dotkniętych elementów. */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
+button { touch-action: manipulation; }
 
 #game {
   position: fixed;
@@ -32,9 +37,13 @@ html, body {
   width: 100vw;
   height: 100vh;
   display: block;
+  touch-action: none;
 }
 
 .hidden { display: none !important; }
+/* Treści tylko dla klawiatury albo tylko dla dotyku (klasa .touch na <body> ustawia js/touch.js). */
+body:not(.touch) .touch-only { display: none !important; }
+body.touch .kbd-only { display: none !important; }
 
 /* ---------- HUD ---------- */
 #hud {
@@ -378,6 +387,145 @@ html, body {
 @media (max-width: 620px) {
   .hud-right { top: 76px; left: 22px; right: auto; }
   #toast { top: 140px; }
+}
+
+/* ---------- Sterowanie dotykowe ---------- */
+#touch {
+  display: none; position: fixed; inset: 0; z-index: 3;
+  touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+}
+body.touch[data-state="play"] #touch { display: block; }
+/* Joystick: w spoczynku blady krążek w rogu, po dotknięciu pojawia się pod kciukiem. */
+#stick {
+  position: absolute; left: calc(40px + env(safe-area-inset-left)); bottom: calc(34px + env(safe-area-inset-bottom));
+  width: 124px; height: 124px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0 54%, rgba(255, 255, 255, 0.24) 55% 100%);
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 6px 20px rgba(60, 40, 50, 0.16);
+  opacity: 0.5; transition: opacity 0.2s;
+}
+#stick.active { left: 0; top: 0; bottom: auto; margin: -62px 0 0 -62px; opacity: 1; }
+#stick .knob {
+  position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+  background: rgba(255, 250, 242, 0.96); border: 3px solid #fff;
+  box-shadow: 0 5px 0 rgba(150, 130, 120, 0.35), 0 8px 18px rgba(60, 40, 50, 0.25);
+}
+.tb-btn {
+  position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.92); color: #fff; cursor: pointer;
+  font-family: var(--font); font-weight: 700; touch-action: none; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s, filter 0.08s;
+}
+.tb-btn svg, .tb-btn span { pointer-events: none; }
+.tb-btn span { font-size: 13px; line-height: 1; margin-top: 1px; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22); }
+.tb-btn.down { transform: scale(0.9); filter: brightness(1.12); }
+.tb-jump {
+  right: calc(26px + env(safe-area-inset-right)); bottom: calc(30px + env(safe-area-inset-bottom)); width: 92px; height: 92px;
+  background: rgba(127, 207, 90, 0.9); box-shadow: 0 6px 0 rgba(79, 157, 56, 0.9), 0 10px 22px rgba(40, 90, 30, 0.28);
+}
+.tb-jump svg { width: 40px; height: 40px; }
+.tb-act {
+  right: calc(134px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); width: 70px; height: 70px;
+  background: rgba(240, 143, 176, 0.9); box-shadow: 0 5px 0 rgba(196, 96, 132, 0.9), 0 8px 18px rgba(120, 40, 70, 0.25);
+}
+.tb-act svg { width: 28px; height: 28px; }
+.tb-act span { font-size: 12px; }
+.tb-cam {
+  bottom: calc(150px + env(safe-area-inset-bottom)); width: 46px; height: 46px;
+  background: rgba(86, 105, 138, 0.8); box-shadow: 0 4px 0 rgba(60, 70, 100, 0.35);
+}
+.tb-cam svg { width: 24px; height: 24px; }
+.tb-cam[data-dir="-1"] { right: calc(82px + env(safe-area-inset-right)); }
+.tb-cam[data-dir="1"] { right: calc(26px + env(safe-area-inset-right)); }
+.pause-btn { pointer-events: auto; cursor: pointer; padding: 6px 10px; font: inherit; }
+.pause-btn svg { width: 24px; height: 24px; fill: #fff; display: block; }
+
+/* Plakietki przycisków dotykowych w podpowiedziach (kolory jak na ekranie). */
+.k.tb { min-width: 0; }
+.k.tb-j, #hint .k.tb-j { background: #7fcf5a; box-shadow: 0 3px 0 #4f9d38; }
+.k.tb-a, #hint .k.tb-a { background: #ef8fb0; box-shadow: 0 3px 0 #c46084; }
+.k.tb-s, #hint .k.tb-s { background: #9aa8c2; box-shadow: 0 3px 0 #75839e; }
+.k.tb-c { padding-left: 7px; padding-right: 7px; }
+.k.tb .arr { fill: none; }
+#hint .k.tb, #tip-keys .k.tb { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); }
+
+/* Układ ekranu w trybie dotykowym: karta ruchu u góry, podpowiedź między kciukami. */
+body.touch #tipcard { top: calc(76px + env(safe-area-inset-top)); bottom: auto; left: calc(12px + env(safe-area-inset-left)); }
+body.touch #hint {
+  bottom: calc(14px + env(safe-area-inset-bottom)); width: max-content; max-width: max(calc(100vw - 440px), 240px);
+  white-space: normal; text-align: center; font-size: 16px; padding: 8px 16px; border-radius: 18px;
+}
+body.touch #hint .k { font-size: 14px; padding: 0 8px; }
+
+/* Prośba o obrócenie telefonu do poziomu. */
+#rotate { display: none; z-index: 40; background: rgba(70, 50, 60, 0.45); backdrop-filter: blur(4px); }
+.rotate-card .phone-ico svg { width: 84px; height: 84px; animation: tilt 2.6s ease-in-out infinite; }
+.rotate-card .tip { margin: 0 0 18px; }
+@keyframes tilt { 0%, 25% { transform: rotate(-90deg); } 55%, 100% { transform: rotate(0deg); } }
+@media (orientation: portrait) {
+  body.touch #rotate:not(.dismissed) { display: flex; }
+  body.touch #hint { bottom: calc(210px + env(safe-area-inset-bottom)); max-width: calc(100vw - 32px); }
+}
+@media (max-width: 620px) { body.touch #tipcard { top: 132px; } }
+/* Wąski telefon w pionie: liczniki muszą się zmieścić w jednym rzędzie. */
+@media (max-width: 440px) {
+  .hud-left, .hud-right { gap: 6px; }
+  .hud-left { left: 10px; }
+  .hud-right { left: 10px; top: 58px; }
+  #toast { top: 112px; }
+  body.touch #tipcard { top: 108px; }
+  .pill { font-size: 16px; padding: 4px 10px 4px 6px; gap: 5px; border-width: 2px; }
+  .pill.friends { gap: 2px; padding: 3px 7px; }
+  .ico { width: 22px; height: 22px; }
+  .fbunny { width: 22px; height: 22px; }
+}
+
+/* Niski ekran (telefon w poziomie): mniejszy HUD, zwarte menu i panele, które da się przewinąć. */
+@media (max-height: 520px) {
+  .hud-left, .hud-right { top: calc(10px + env(safe-area-inset-top)); gap: 8px; }
+  .hud-left { left: calc(14px + env(safe-area-inset-left)); }
+  .hud-right { right: calc(14px + env(safe-area-inset-right)); }
+  .pill { font-size: 19px; padding: 4px 12px 4px 8px; border-width: 2px; gap: 6px; }
+  .pill.timer { font-size: 16px; padding: 6px 12px; }
+  .pill.friends { padding: 3px 9px; }
+  .pause-btn { padding: 5px 8px; }
+  .ico { width: 24px; height: 24px; }
+  .fbunny { width: 26px; height: 26px; }
+  #hearts svg { width: 28px; height: 28px; }
+  #toast { top: calc(58px + env(safe-area-inset-top)); font-size: 18px; padding: 7px 20px; }
+  #tipcard { width: 140px; }
+  .tip-view { height: 74px; }
+  body.touch #tipcard { top: calc(58px + env(safe-area-inset-top)); }
+  #menu { padding: 3vh calc(4vw + env(safe-area-inset-left)); }
+  .title { font-size: clamp(44px, 15vh, 96px); }
+  .subtitle { font-size: 20px; margin-top: 4px; }
+  .story { font-size: 15px; line-height: 1.4; padding: 10px 14px; margin-top: 10px; max-width: 420px; }
+  .buttons { margin-top: 12px; gap: 10px; }
+  .btn { font-size: 17px; padding: 8px 20px; }
+  .panel { padding: 12px 22px 14px; max-height: calc(100vh - 16px); overflow-y: auto; border-radius: 26px; }
+  .panel h2 { font-size: 24px; margin-bottom: 6px; }
+  .keys { gap: 5px; margin-bottom: 8px; }
+  .keys li { font-size: 14px; gap: 6px; }
+  .keys em { margin-left: 4px; }
+  .k { font-size: 13px; min-width: 32px; padding: 1px 8px; box-shadow: 0 3px 0 var(--slate-dark); }
+  .tip { font-size: 13px; line-height: 1.35; margin-bottom: 10px; }
+  .results { min-width: 0; width: min(520px, calc(100vw - 32px)); }
+  .big-stars { margin: 0 0 8px; }
+  .bstar { width: 58px; height: 58px; }
+  .bstar.mid { width: 74px; height: 74px; margin-bottom: 8px; }
+  .criteria { gap: 6px; }
+  .criteria li { font-size: 15px; padding: 5px 12px; }
+  .switch-row { margin-bottom: 10px; padding: 8px 12px; }
+  .sw-label { font-size: 16px; }
+  .day-now { margin-bottom: 10px; }
+  #intro .intro-skip { font-size: 15px; bottom: 14px; right: 18px; }
+  #intro .intro-title { top: 7vh; }
+}
+/* Mały i wąski ekran naraz: serduszka i czas schodzą do drugiego rzędu. */
+@media (max-height: 520px) and (max-width: 620px) {
+  .hud-right { top: calc(52px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); right: auto; }
+  #toast { top: 98px; }
+  body.touch #tipcard { top: 98px; }
 }
 @media (max-width: 720px) {
   .pill { font-size: 20px; }

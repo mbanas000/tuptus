@@ -5,16 +5,18 @@ G.tips = (() => {
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
   const S = G.GEO;
   const P = G.PAL;
-  const k = (t) => `<span class="k">${t}</span>`;
   const SHOW_TIME = 8;
+  // Opisy to funkcje: plakietki zależą od sterowania (klawiatura albo przyciski dotykowe).
+  const J = () => G.keys.jump(), A = () => G.keys.act();
+  const touch = () => G.input.touchMode;
 
   const CARDS = {
-    highjump: { title: 'Wysoki skok', keys: `${k('Shift')} w miejscu, potem ${k('Spacja')}`, dur: 2.8 },
-    glide: { title: 'Szybowanie na uszach', keys: `W powietrzu naciśnij i trzymaj ${k('Spacja')}`, dur: 3.2 },
-    roll: { title: 'Turlanie się w kulkę', keys: `${k('Shift')} w biegu`, dur: 2.7 },
-    longjump: { title: 'Daleki skok', keys: `Turlaj się (${k('Shift')}) i skocz ${k('Spacja')}`, dur: 3.0 },
-    smash: { title: 'Rozbijanie dzbanków', keys: `Skocz na dzbanek ${k('Spacja')} albo wtocz się w niego`, dur: 2.6 },
-    qblock: { title: 'Bloki „?”', keys: `Uderz głową od spodu ${k('Spacja')}`, dur: 2.5 },
+    highjump: { title: 'Wysoki skok', keys: () => (touch() ? `Stój, trzymaj ${A()} i naciśnij ${J()}` : `${A()} w miejscu, potem ${J()}`), dur: 2.8 },
+    glide: { title: 'Szybowanie na uszach', keys: () => `W powietrzu naciśnij i trzymaj ${J()}`, dur: 3.2 },
+    roll: { title: 'Turlanie się w kulkę', keys: () => `${A()} w biegu`, dur: 2.7 },
+    longjump: { title: 'Daleki skok', keys: () => `Turlaj się (${A()}) i skocz ${J()}`, dur: 3.0 },
+    smash: { title: 'Rozbijanie dzbanków', keys: () => `Skocz na dzbanek ${J()} albo wtocz się w niego`, dur: 2.6 },
+    qblock: { title: 'Bloki „?”', keys: () => `Uderz głową od spodu ${J()}`, dur: 2.5 },
   };
 
   let renderer, scene, camera, rabbit, shadow, el, canvas;
@@ -210,7 +212,7 @@ G.tips = (() => {
       current = id; t = 0; showT = 0; hiding = false;
       build(id);
       document.getElementById('tip-title').textContent = CARDS[id].title;
-      document.getElementById('tip-keys').innerHTML = CARDS[id].keys;
+      document.getElementById('tip-keys').innerHTML = CARDS[id].keys();
       el.classList.remove('hidden', 'out');
       G.sfx.play('pop');
       return true;

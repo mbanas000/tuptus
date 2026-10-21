@@ -50,10 +50,11 @@ G._handlers = {};
 G.on = (name, fn) => { (G._handlers[name] ||= []).push(fn); };
 G.emit = (name, data) => { (G._handlers[name] || []).forEach((fn) => fn(data)); };
 
-// ---------- Klawiatura ----------
+// ---------- Klawiatura (i wirtualne klawisze z ekranu dotykowego) ----------
 G.input = (() => {
   const held = new Set();
   const pressed = new Set();
+  const stick = { x: 0, z: 0 }; // wychylenie joysticka dotykowego (−1..1)
   const block = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight']);
 
   window.addEventListener('keydown', (e) => {
@@ -65,10 +66,17 @@ G.input = (() => {
   window.addEventListener('blur', () => held.clear());
 
   const any = (set, codes) => codes.some((c) => set.has(c));
-  const JUMP = ['Space', 'KeyJ'];
-  const ACT = ['ShiftLeft', 'ShiftRight', 'KeyC', 'KeyK'];
+  const JUMP = ['Space', 'KeyJ', 'TouchJump'];
+  const ACT = ['ShiftLeft', 'ShiftRight', 'KeyC', 'KeyK', 'TouchAct'];
 
   return {
+    // true, gdy gracz steruje dotykiem (przełącza G.touch); wpływa na plakietki w podpowiedziach.
+    touchMode: false,
+    // Przycisk dotykowy działa jak klawisz: wciśnięcie zalicza się też jako „naciśnięty w tej klatce”.
+    virt(code, down) {
+      if (down) { if (!held.has(code)) pressed.add(code); held.add(code); } else held.delete(code);
+    },
+    setStick(x, z) { stick.x = x; stick.z = z; },
     held: (...codes) => any(held, codes),
     pressed: (...codes) => any(pressed, codes),
     get jumpHeld() { return any(held, JUMP); },
@@ -77,6 +85,9 @@ G.input = (() => {
     get actPressed() { return any(pressed, ACT); },
     // Kierunek ruchu w płaszczyźnie XZ (kamera patrzy wzdłuż -Z).
     move() {
+      // Joystick jest analogowy: lekkie wychylenie = spacer, pełne = bieg.
+      const sl = Math.hypot(stick.x, stick.z);
+      if (sl > 0.001) return { x: stick.x, z: stick.z, len: Math.min(1, sl) };
       let x = 0, z = 0;
       if (any(held, ['KeyD', 'ArrowRight'])) x += 1;
       if (any(held, ['KeyA', 'ArrowLeft'])) x -= 1;
@@ -87,6 +98,27 @@ G.input = (() => {
       return { x, z, len: Math.min(1, len) };
     },
     endFrame() { pressed.clear(); },
-    clear() { held.clear(); pressed.clear(); },
+    clear() { held.clear(); pressed.clear(); stick.x = 0; stick.z = 0; },
+  };
+})();
+
+// ---------- Plakietki sterowania w podpowiedziach ----------
+// Treść zależy od tego, czym gracz właśnie gra: klawiaturą czy dotykiem.
+G.keys = (() => {
+  const k = (t) => `<span class="k">${t}</span>`;
+  const tb = (cls, html) => `<span class="k tb ${cls}">${html}</span>`;
+  const ARROW = '<path d="M12 3.5l7.5 8.5h-4.7v8.5h-5.6V12H4.5z"/>';
+  const arrows = () => [-90, 0, 180, 90].map((r) =>
+    `<span class="k k-arr"><svg class="arr" viewBox="0 0 24 24" style="transform:rotate(${r}deg)">${ARROW}</svg></span>`).join('');
+  const ROT = '<path d="M12 5.2a6.8 6.8 0 1 1-6.5 4.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>' +
+    '<path d="M3.6 4.6l1.9 5.4 5.4-1.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  const rot = (flip) => `<svg class="arr" viewBox="0 0 24 24"${flip ? ' style="transform:scaleX(-1)"' : ''}>${ROT}</svg>`;
+  const touch = () => G.input.touchMode;
+  return {
+    k, arrows, rot,
+    move: () => (touch() ? tb('tb-s', 'lewy kciuk') : `${k('W A S D')} albo ${arrows()}`),
+    jump: () => (touch() ? tb('tb-j', 'Skok') : k('Spacja')),
+    act: () => (touch() ? tb('tb-a', 'Kulka') : k('Shift')),
+    cam: () => (touch() ? `${tb('tb-c', rot(false))} ${tb('tb-c', rot(true))}` : `${k('Q')} ${k('E')}`),
   };
 })();

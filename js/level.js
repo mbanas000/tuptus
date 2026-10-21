@@ -3,14 +3,14 @@
 // ścieżka z chmurek → ogród marchewkowy → norka Tuptusia.
 G.level = (() => {
   const P = G.PAL;
-  const k = (t) => `<span class="k">${t}</span>`;
 
-  // Strefy z podpowiedziami: „card” = karta z ruchem w rogu (raz na rozgrywkę), „text” = napis na dole.
+  // Strefy z podpowiedziami: „card” = karta z ruchem w rogu (raz na rozgrywkę), „text” = napis na dole
+  // (tekst może być funkcją, gdy zawiera plakietkę klawisza albo przycisku dotykowego).
   const hints = [
     { x0: -1.8, x1: 2.6, z0: -5.4, z1: -2.3, y1: 2.5, card: 'smash' },
     { x0: 10, x1: 13.2, z0: 0, z1: 3.2, y1: 2.5, card: 'qblock' },
     { x0: 13.5, x1: 20, z0: -7, z1: -1.2, y1: 3.5, card: 'highjump' },
-    { x0: 44.5, x1: 49.5, z0: -6, z1: -1.5, y1: 3, text: `Wskocz na trampolinę. Trzymaj ${k('Spacja')}, by wybić się wyżej` },
+    { x0: 44.5, x1: 49.5, z0: -6, z1: -1.5, y1: 3, text: () => `Wskocz na trampolinę. Trzymaj ${G.keys.jump()}, by wybić się wyżej` },
     { x0: 61, x1: 69, z0: -4.5, z1: 1, y0: 5.5, card: 'glide' },
     { x0: 82, x1: 88, z0: 1, z1: 5, card: 'roll' },
     { x0: 98, x1: 104, z0: -2.5, z1: 5, y1: 3, card: 'longjump' },
@@ -229,7 +229,7 @@ G.level = (() => {
     hints,
     build,
     hintAt(p) {
-      for (const h of hints) if (h.text && inZone(h, p)) return h.text;
+      for (const h of hints) if (h.text && inZone(h, p)) return typeof h.text === 'function' ? h.text() : h.text;
       return null;
     },
     cardAt(p) {
